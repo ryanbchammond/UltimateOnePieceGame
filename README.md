@@ -18,7 +18,7 @@ npm run dev
 The client runs at `http://localhost:5173`. The server health endpoint is available at
 `http://localhost:3001/api/health`.
 
-(Demo Here)(https://ryanbchammond.github.io/UltimateOnePieceGame/)
+[Demo Here](https://ryanbchammond.github.io/UltimateOnePieceGame/)
 
 ## Playable campaign
 
