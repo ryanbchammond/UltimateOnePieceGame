@@ -66,7 +66,7 @@ function playWithBasicFocusFire(
   return { battle, actions, characterMovePp: nextMovePp };
 }
 
-describe('East Blue encounters', () => {
+describe('Story encounters', () => {
   it('gives every accessible crew character exactly four valid, distinct moves', () => {
     Object.values(crewCharacters).forEach((character) => {
       expect(character.fighter.moves, character.name).toHaveLength(4);
@@ -125,19 +125,87 @@ describe('East Blue encounters', () => {
       .toBe('victory');
   });
 
-  it('keeps the full direct and open route completable without putting Zoro in battle', () => {
-    const party: CharacterId[] = ['luffy', 'coby'];
-    const alvida = playWithBasicFocusFire('alvida-deck', party);
-    expect(alvida.battle.status).toBe('victory');
-    const yard = playWithBasicFocusFire('marine-yard', party, alvida.characterMovePp);
-    expect(yard.battle.status).toBe('victory');
-    const morgan = playWithBasicFocusFire(
-      'morgan-last-stand',
-      party,
-      yard.characterMovePp,
-    );
-    expect(morgan.battle.status).toBe('victory');
+  it.each<[EncounterId, string[]]>([
+    ['beast-tamers-street', ['mohji', 'richie', 'beast-pirate']],
+    ['harbor-decoy', ['mohji', 'richie']],
+    ['acrobat-rooftops', ['cabaji', 'acrobat-pirate-a', 'acrobat-pirate-b']],
+  ])('%s has its approved lineup and is reliable with the reachable Orange Town crew', (
+    id,
+    enemyIds,
+  ) => {
+    const definitions = getEncounterFighters(id, ['luffy', 'zoro']);
+    const enemies = definitions.filter((fighter) => fighter.side === 'enemy');
+    expect(enemies.map((fighter) => fighter.id)).toEqual(enemyIds);
+    expect(enemies.every((fighter) => fighter.moves.length === 4)).toBe(true);
+    expect(() => createBattle(definitions)).not.toThrow();
+    expect(playWithBasicFocusFire(id, ['luffy', 'zoro']).battle.status).toBe('victory');
+    expect(playWithBasicFocusFire(id, ['luffy', 'zoro', 'nami']).battle.status).toBe('victory');
   });
+
+  it.each<[EncounterId, EncounterId]>([
+    ['alvida-deck', 'marine-yard'],
+    ['alvida-deck', 'execution-grounds'],
+    ['alvida-hold', 'marine-yard'],
+    ['alvida-hold', 'execution-grounds'],
+  ])(
+    'keeps the %s and %s route completable without putting Zoro in battle',
+    (alvidaEncounterId, shellsEncounterId) => {
+      const party: CharacterId[] = ['luffy', 'coby'];
+      const alvida = playWithBasicFocusFire(alvidaEncounterId, party);
+      expect(alvida.battle.status).toBe('victory');
+      const shellsTown = playWithBasicFocusFire(
+        shellsEncounterId,
+        party,
+        alvida.characterMovePp,
+      );
+      expect(shellsTown.battle.status).toBe('victory');
+      const morgan = playWithBasicFocusFire(
+        'morgan-last-stand',
+        party,
+        shellsTown.characterMovePp,
+      );
+      expect(morgan.battle.status).toBe('victory');
+    },
+  );
+
+  it.each<[EncounterId, EncounterId, EncounterId]>(
+    (['alvida-deck', 'alvida-hold'] as EncounterId[]).flatMap((alvidaId) =>
+      (['marine-yard', 'execution-grounds'] as EncounterId[]).flatMap((shellsId) =>
+        (['beast-tamers-street', 'harbor-decoy', 'acrobat-rooftops'] as EncounterId[])
+          .map((orangeId): [EncounterId, EncounterId, EncounterId] => [
+            alvidaId,
+            shellsId,
+            orangeId,
+          ]),
+      ),
+    ),
+  )(
+    'carries PP from %s through %s and Morgan into the %s route with Luffy and Zoro',
+    (alvidaEncounterId, shellsEncounterId, orangeEncounterId) => {
+      const romanceParty: CharacterId[] = ['luffy', 'coby'];
+      const alvida = playWithBasicFocusFire(alvidaEncounterId, romanceParty);
+      expect(alvida.battle.status).toBe('victory');
+      const shellsTown = playWithBasicFocusFire(
+        shellsEncounterId,
+        romanceParty,
+        alvida.characterMovePp,
+      );
+      expect(shellsTown.battle.status).toBe('victory');
+      const morgan = playWithBasicFocusFire(
+        'morgan-last-stand',
+        romanceParty,
+        shellsTown.characterMovePp,
+      );
+      expect(morgan.battle.status).toBe('victory');
+
+      const orangeTown = playWithBasicFocusFire(
+        orangeEncounterId,
+        ['luffy', 'zoro'],
+        morgan.characterMovePp,
+      );
+      expect(orangeTown.battle.status).toBe('victory');
+    },
+  );
 
   it.each<EncounterId>(['shells-town', 'arlong-park'])('%s is a valid, winnable 4v4 encounter', (id) => {
     const definitions = getEncounterFighters(id);

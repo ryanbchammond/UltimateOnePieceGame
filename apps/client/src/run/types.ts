@@ -25,7 +25,10 @@ export type EncounterId =
   | 'alvida-hold'
   | 'marine-yard'
   | 'execution-grounds'
-  | 'morgan-last-stand';
+  | 'morgan-last-stand'
+  | 'beast-tamers-street'
+  | 'harbor-decoy'
+  | 'acrobat-rooftops';
 export type CharacterId =
   | 'luffy'
   | 'alvida'
@@ -41,6 +44,9 @@ export type CharacterId =
   | 'tashigi'
   | 'gin'
   | 'buggy'
+  | 'mohji'
+  | 'richie'
+  | 'cabaji'
   | 'smoker';
 export type CharacterCapability = 'observation-haki';
 export type ArtifactId = 'weathered-log-pose';

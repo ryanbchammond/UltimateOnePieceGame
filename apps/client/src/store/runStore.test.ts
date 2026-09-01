@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getAvailableNodes } from '../run/storyContent';
+import { getAvailableNodes, storyNodeChoices } from '../run/storyContent';
+import { orangeTownArc } from '../run/orangeTownMap';
 import type { RunSnapshot } from '../run/types';
 import {
   clearObsoleteRunStorage,
@@ -173,6 +174,26 @@ describe('Story run store', () => {
     expect(useRunStore.getState().bounty).toBe(2310);
   });
 
+  it('preserves the selected Shells Town route, visited fog state, and PP after defeat', () => {
+    reachShellsTown();
+    expect(useRunStore.getState().resolveNode('help-rika-openly')).toBe(true);
+    expect(useRunStore.getState().enterNode('marine-yard')).toBe(true);
+    useRunStore.getState().setCharacterMovePp('luffy', 'pistol', 3);
+    useRunStore.getState().resolveBattle('defeat');
+
+    const run = useRunStore.getState();
+    expect(run).toEqual(expect.objectContaining({
+      phase: 'map',
+      currentNodeId: 'cobys-resolve',
+      checkpointNodeId: 'cobys-resolve',
+      chosenBranches: expect.objectContaining({ 'shells-route': 'marine-yard' }),
+      characterMovePp: expect.objectContaining({ luffy: expect.objectContaining({ pistol: 3 }) }),
+    }));
+    expect(run.visitedNodeIds).toContain('marine-yard');
+    expect(run.visitedNodeIds).not.toContain('execution-grounds');
+    expect(getAvailableNodes(run).map((node) => node.id)).toEqual(['marine-yard']);
+  });
+
   it('reconverges at Zoro, recruits him permanently, and leaves lineup control to the player', () => {
     reachZoro('help-rika-openly');
     expect(useRunStore.getState().resolveNode('return-zoros-swords')).toBe(true);
@@ -243,6 +264,56 @@ describe('Story run store', () => {
     }));
     expect(getAvailableNodes(run).map((node) => node.id)).toEqual(['orange-town-harbor']);
   });
+
+  it.each([
+    { foosha: 'pack-provisions', alvida: 'direct', hold: null, shells: 'open', berries: 320, bounty: 6270 },
+    { foosha: 'pack-provisions', alvida: 'direct', hold: null, shells: 'quiet', berries: 290, bounty: 5610 },
+    { foosha: 'patch-the-boat', alvida: 'direct', hold: null, shells: 'open', berries: 295, bounty: 6270 },
+    { foosha: 'patch-the-boat', alvida: 'direct', hold: null, shells: 'quiet', berries: 265, bounty: 5610 },
+    { foosha: 'pack-provisions', alvida: 'infiltrate', hold: 'supplies', shells: 'open', berries: 340, bounty: 5610 },
+    { foosha: 'pack-provisions', alvida: 'infiltrate', hold: 'supplies', shells: 'quiet', berries: 310, bounty: 4950 },
+    { foosha: 'patch-the-boat', alvida: 'infiltrate', hold: 'supplies', shells: 'open', berries: 315, bounty: 5610 },
+    { foosha: 'patch-the-boat', alvida: 'infiltrate', hold: 'supplies', shells: 'quiet', berries: 285, bounty: 4950 },
+    { foosha: 'pack-provisions', alvida: 'infiltrate', hold: 'captives', shells: 'open', berries: 300, bounty: 5910 },
+    { foosha: 'pack-provisions', alvida: 'infiltrate', hold: 'captives', shells: 'quiet', berries: 270, bounty: 5250 },
+    { foosha: 'patch-the-boat', alvida: 'infiltrate', hold: 'captives', shells: 'open', berries: 275, bounty: 5910 },
+    { foosha: 'patch-the-boat', alvida: 'infiltrate', hold: 'captives', shells: 'quiet', berries: 245, bounty: 5250 },
+  ] as const)(
+    'completes the full $foosha/$alvida/$hold/$shells route with exact progression',
+    ({ foosha, alvida, hold, shells, berries, bounty }) => {
+      completeRomanceDawnRoute({ foosha, alvida, hold, shells });
+
+      const farewell = useRunStore.getState();
+      expect(farewell).toEqual(expect.objectContaining({
+        phase: 'node',
+        activeArcId: 'romance-dawn',
+        currentNodeId: 'marines-farewell',
+        checkpointNodeId: 'marines-farewell',
+        berries,
+        bounty,
+        rosterIds: ['luffy', 'zoro'],
+        guestIds: [],
+      }));
+      expect(farewell.pendingPack?.packId).toBe('romance-dawn');
+      expect(farewell.completedNodeIds).toContain('morgan-last-stand');
+      expect(farewell.visitedNodeIds).not.toContain(
+        alvida === 'direct' ? 'alvida-hold' : 'alvida-deck',
+      );
+      expect(farewell.visitedNodeIds).not.toContain(
+        shells === 'open' ? 'execution-grounds' : 'marine-yard',
+      );
+
+      const pack = farewell.pendingPack!;
+      for (const card of pack.cards) useRunStore.getState().revealPackCard(card.cardId);
+      expect(useRunStore.getState().claimPackCard(pack.cards[0].cardId)).toBe(true);
+      expect(useRunStore.getState()).toEqual(expect.objectContaining({
+        phase: 'map',
+        activeArcId: 'orange-town',
+        currentNodeId: 'orange-town-harbor',
+        pendingPack: null,
+      }));
+    },
+  );
 
   it('uses a clean dev-build save and removes obsolete alpha storage', () => {
     const removed: string[] = [];
@@ -492,6 +563,149 @@ describe('Story run store', () => {
     expect(useRunStore.getState().latestReward).toBeNull();
   });
 
+  it('starts Orange Town locally, adds Nami as an optional guest, and opens three officer routes', () => {
+    beginOrangeTown();
+
+    expect(useRunStore.getState().enterNode('orange-town-harbor')).toBe(true);
+    expect(useRunStore.getState().resolveNode('ally-with-nami')).toBe(true);
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      checkpointNodeId: 'orange-town-harbor',
+      guestIds: ['nami'],
+      activePartyIds: ['luffy', 'zoro'],
+    }));
+    expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id))
+      .toEqual(['chouchous-stand']);
+
+    expect(useRunStore.getState().enterNode('chouchous-stand')).toBe(true);
+    expect(Object.keys(useRunStore.getState().chosenBranches)).not.toContain('orange-officer-route');
+    expect(storyNodeChoices['chouchous-stand']).toHaveLength(3);
+  });
+
+  it.each([
+    {
+      routeChoice: 'defend-chouchous-shop', encounterId: 'beast-tamers-street',
+      routeBerries: 75, routeBounty: 1320, routeHullDamage: 0,
+      mayorChoice: 'protect-orange-town-civilians', mayorBerries: 0, mayorBounty: 900,
+      mayorHull: (hull: number) => hull - 8,
+    },
+    {
+      routeChoice: 'defend-chouchous-shop', encounterId: 'beast-tamers-street',
+      routeBerries: 75, routeBounty: 1320, routeHullDamage: 0,
+      mayorChoice: 'rally-orange-town', mayorBerries: 0, mayorBounty: 450,
+      mayorHull: (hull: number) => Math.min(100, hull + 10),
+    },
+    {
+      routeChoice: 'defend-chouchous-shop', encounterId: 'beast-tamers-street',
+      routeBerries: 75, routeBounty: 1320, routeHullDamage: 0,
+      mayorChoice: 'prioritize-buggy-supplies', mayorBerries: 100, mayorBounty: -300,
+      mayorHull: (hull: number) => hull,
+    },
+    {
+      routeChoice: 'set-harbor-decoy', encounterId: 'harbor-decoy',
+      routeBerries: 110, routeBounty: 770, routeHullDamage: 8,
+      mayorChoice: 'protect-orange-town-civilians', mayorBerries: 0, mayorBounty: 900,
+      mayorHull: (hull: number) => hull - 8,
+    },
+    {
+      routeChoice: 'set-harbor-decoy', encounterId: 'harbor-decoy',
+      routeBerries: 110, routeBounty: 770, routeHullDamage: 8,
+      mayorChoice: 'rally-orange-town', mayorBerries: 0, mayorBounty: 450,
+      mayorHull: (hull: number) => Math.min(100, hull + 10),
+    },
+    {
+      routeChoice: 'set-harbor-decoy', encounterId: 'harbor-decoy',
+      routeBerries: 110, routeBounty: 770, routeHullDamage: 8,
+      mayorChoice: 'prioritize-buggy-supplies', mayorBerries: 100, mayorBounty: -300,
+      mayorHull: (hull: number) => hull,
+    },
+    {
+      routeChoice: 'follow-nami-rooftops', encounterId: 'acrobat-rooftops',
+      routeBerries: 50, routeBounty: 990, routeHullDamage: 0,
+      mayorChoice: 'protect-orange-town-civilians', mayorBerries: 0, mayorBounty: 900,
+      mayorHull: (hull: number) => hull - 8,
+    },
+    {
+      routeChoice: 'follow-nami-rooftops', encounterId: 'acrobat-rooftops',
+      routeBerries: 50, routeBounty: 990, routeHullDamage: 0,
+      mayorChoice: 'rally-orange-town', mayorBerries: 0, mayorBounty: 450,
+      mayorHull: (hull: number) => Math.min(100, hull + 10),
+    },
+    {
+      routeChoice: 'follow-nami-rooftops', encounterId: 'acrobat-rooftops',
+      routeBerries: 50, routeBounty: 990, routeHullDamage: 0,
+      mayorChoice: 'prioritize-buggy-supplies', mayorBerries: 100, mayorBounty: -300,
+      mayorHull: (hull: number) => hull,
+    },
+  ])(
+    'completes $encounterId into $mayorChoice with exact consequences and a PP-restoring checkpoint',
+    ({
+      routeChoice,
+      encounterId,
+      routeBerries,
+      routeBounty,
+      routeHullDamage,
+      mayorChoice,
+      mayorBerries,
+      mayorBounty,
+      mayorHull,
+    }) => {
+      reachOrangeOfficerChoice();
+      expect(useRunStore.getState().resolveNode(routeChoice)).toBe(true);
+      expect(useRunStore.getState().chosenBranches['orange-officer-route']).toBe(encounterId);
+      expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id)).toEqual([encounterId]);
+      expect(useRunStore.getState().enterNode(encounterId)).toBe(true);
+      useRunStore.getState().resolveBattle('victory');
+
+      const afterRouteHull = 90 - routeHullDamage;
+      expect(useRunStore.getState()).toEqual(expect.objectContaining({
+        berries: 300 + routeBerries,
+        bounty: 6000 + routeBounty,
+        hull: afterRouteHull,
+      }));
+      expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id))
+        .toEqual(['mayors-resolve']);
+
+      expect(useRunStore.getState().enterNode('mayors-resolve')).toBe(true);
+      useRunStore.getState().setCharacterMovePp('luffy', 'pistol', 1);
+      useRunStore.getState().setCharacterMovePp('zoro', 'onigiri', 0);
+      expect(useRunStore.getState().resolveNode(mayorChoice)).toBe(true);
+
+      expect(useRunStore.getState()).toEqual(expect.objectContaining({
+        phase: 'map',
+        berries: 300 + routeBerries + mayorBerries,
+        bounty: 6000 + routeBounty + mayorBounty,
+        hull: mayorHull(afterRouteHull),
+        checkpointNodeId: 'mayors-resolve',
+        characterMovePp: {},
+      }));
+      expect(getAvailableNodes(useRunStore.getState())).toEqual([]);
+    },
+  );
+
+  it('recovers an Orange Town route defeat at Harbor without revealing the unchosen branches', () => {
+    reachOrangeOfficerChoice();
+    expect(useRunStore.getState().resolveNode('follow-nami-rooftops')).toBe(true);
+    expect(useRunStore.getState().enterNode('acrobat-rooftops')).toBe(true);
+    useRunStore.getState().setCharacterMovePp('luffy', 'pistol', 2);
+    useRunStore.getState().resolveBattle('defeat');
+
+    const run = useRunStore.getState();
+    expect(run).toEqual(expect.objectContaining({
+      phase: 'map',
+      activeArcId: 'orange-town',
+      currentNodeId: 'orange-town-harbor',
+      checkpointNodeId: 'orange-town-harbor',
+      hull: 80,
+      guestIds: ['nami'],
+      chosenBranches: expect.objectContaining({ 'orange-officer-route': 'acrobat-rooftops' }),
+      characterMovePp: expect.objectContaining({ luffy: expect.objectContaining({ pistol: 2 }) }),
+    }));
+    expect(run.visitedNodeIds).toContain('acrobat-rooftops');
+    expect(run.visitedNodeIds).not.toContain('beast-tamers-street');
+    expect(run.visitedNodeIds).not.toContain('harbor-decoy');
+    expect(getAvailableNodes(run).map((node) => node.id)).toEqual(['acrobat-rooftops']);
+  });
+
 });
 
 function sequenceRandom(...values: number[]): () => number {
@@ -522,4 +736,80 @@ function reachZoro(shellsChoice: 'help-rika-openly' | 'gather-information-quietl
   expect(useRunStore.getState().enterNode(encounterId)).toBe(true);
   useRunStore.getState().resolveBattle('victory');
   expect(useRunStore.getState().enterNode('free-pirate-hunter')).toBe(true);
+}
+
+function beginOrangeTown(): void {
+  useRunStore.getState().startRun();
+  useRunStore.setState({
+    phase: 'map',
+    activeArcId: 'orange-town',
+    berries: 300,
+    bounty: 6000,
+    hull: 90,
+    maxHull: 100,
+    completedNodeIds: ['marines-farewell'],
+    visitedNodeIds: ['marines-farewell', 'orange-town-harbor'],
+    currentNodeId: 'orange-town-harbor',
+    checkpointNodeId: 'marines-farewell',
+    chosenBranches: {},
+    journal: ['Luffy and Zoro reached Orange Town.'],
+    rosterIds: ['luffy', 'zoro'],
+    guestIds: [],
+    activePartyIds: ['luffy', 'zoro'],
+    roleAssignments: { ...orangeTownArc.start.roleAssignments },
+    characterMovePp: {},
+    pendingPack: null,
+    latestReward: null,
+  });
+}
+
+function reachOrangeOfficerChoice(): void {
+  beginOrangeTown();
+  expect(useRunStore.getState().enterNode('orange-town-harbor')).toBe(true);
+  expect(useRunStore.getState().resolveNode('ally-with-nami')).toBe(true);
+  expect(useRunStore.getState().enterNode('chouchous-stand')).toBe(true);
+}
+
+interface RomanceDawnRoute {
+  foosha: 'pack-provisions' | 'patch-the-boat';
+  alvida: 'direct' | 'infiltrate';
+  hold: 'supplies' | 'captives' | null;
+  shells: 'open' | 'quiet';
+}
+
+function completeRomanceDawnRoute(route: RomanceDawnRoute): void {
+  reachBarrel(route.foosha);
+  if (route.alvida === 'direct') {
+    expect(route.hold).toBeNull();
+    expect(useRunStore.getState().resolveNode('rescue-coby-openly')).toBe(true);
+    expect(useRunStore.getState().enterNode('alvida-deck')).toBe(true);
+  } else {
+    expect(route.hold).not.toBeNull();
+    expect(useRunStore.getState().resolveNode('infiltrate-alvidas-ship')).toBe(true);
+    expect(useRunStore.getState().enterNode('alvida-hold')).toBe(true);
+    const holdChoice = route.hold === 'supplies'
+      ? 'take-alvidas-supplies'
+      : 'free-alvidas-captives';
+    expect(useRunStore.getState().resolveNode(holdChoice)).toBe(true);
+    expect(useRunStore.getState().enterNode('alvida-hold-battle')).toBe(true);
+  }
+  useRunStore.getState().resolveBattle('victory');
+
+  expect(useRunStore.getState().enterNode('cobys-resolve')).toBe(true);
+  expect(useRunStore.getState().resolveNode('support-cobys-dream')).toBe(true);
+  expect(useRunStore.getState().enterNode('shells-town-arrival')).toBe(true);
+  const shellsChoice = route.shells === 'open'
+    ? 'help-rika-openly'
+    : 'gather-information-quietly';
+  const shellsEncounter = route.shells === 'open' ? 'marine-yard' : 'execution-grounds';
+  expect(useRunStore.getState().resolveNode(shellsChoice)).toBe(true);
+  expect(useRunStore.getState().enterNode(shellsEncounter)).toBe(true);
+  useRunStore.getState().resolveBattle('victory');
+
+  expect(useRunStore.getState().enterNode('free-pirate-hunter')).toBe(true);
+  expect(useRunStore.getState().resolveNode('return-zoros-swords')).toBe(true);
+  expect(useRunStore.getState().enterNode('morgan-last-stand')).toBe(true);
+  useRunStore.getState().resolveBattle('victory');
+  expect(useRunStore.getState().enterNode('marines-farewell')).toBe(true);
+  expect(useRunStore.getState().resolveNode('honor-cobys-farewell')).toBe(true);
 }

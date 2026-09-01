@@ -84,18 +84,18 @@ export function RunSetup() {
   return (
     <section className="setup-screen">
       <div className="setup-copy">
-        <p className="eyebrow">Romance Dawn vertical slice</p>
+        <p className="eyebrow">Two-arc development campaign</p>
         <h2>Set sail from Foosha Village</h2>
         <p>
-          Begin Luffy's voyage, free Coby from Alvida, recruit Zoro in Shells Town, and bring down
-          Axe-Hand Morgan across two meaningful story branches.
+          Begin Luffy's voyage, free Coby from Alvida, recruit Zoro in Shells Town, and continue
+          into Buggy-occupied Orange Town with Nami as a temporary ally.
         </p>
       </div>
       <div className="run-settings" aria-label="Run settings">
         <div>
           <span>Mode</span>
           <strong>Story</strong>
-          <small>Detailed Romance Dawn journey</small>
+          <small>Romance Dawn and Orange Town</small>
         </div>
         <div>
           <span>Difficulty</span>
@@ -208,7 +208,7 @@ export function VoyagePanel() {
           ))}
           {availableNodes.length === 0 && (
             <p className="empty-crew-note">
-              Opening slice complete. Shells Town is the next development chunk.
+              No further destinations are available in this development slice.
             </p>
           )}
         </div>

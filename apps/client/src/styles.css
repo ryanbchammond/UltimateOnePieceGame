@@ -2040,8 +2040,12 @@ h1 {
 
 @media (prefers-reduced-motion: reduce) {
   .card-reveal,
-  .card-reveal-aura {
-    animation: none;
+  .card-reveal.reveal-enhanced,
+  .card-reveal.reveal-special,
+  .card-reveal-aura,
+  .card-reveal[data-animation='white-out'] .card-reveal-aura,
+  .enemy-thinking::after {
+    animation: none !important;
   }
 }
 

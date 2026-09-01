@@ -18,10 +18,10 @@ npm run dev
 The client runs at `http://localhost:5173`. The server health endpoint is available at
 `http://localhost:3001/api/health`.
 
-## Playable alpha slice
+## Playable campaign
 
-The active build contains the first detailed **Romance Dawn** story slice using Story Mode and
-Landlubber difficulty:
+The active build contains the completed **Romance Dawn** arc and the first playable **Orange Town**
+slice using Story Mode and Landlubber difficulty:
 
 - Begin at Foosha Village with 75 Berries and 90/100 hull
 - Choose extra provisions or a fully repaired tiny boat before departure
@@ -36,6 +36,10 @@ Landlubber difficulty:
 - Defeat Morgan, Commander Ripper, and a Marine gunner in Morgan's Last Stand
 - Say farewell to Coby, set the Romance Dawn checkpoint, and open a free five-card arc pack
 - Reveal all five cards, keep exactly one, and transition to the separate Orange Town map boundary
+- Add Nami as an optional player-controlled guest at Orange Town Harbor
+- Choose among three Chouchou routes: Mohji's full raiding party, Nami's risky harbor decoy, or
+  Cabaji's rooftop acrobats
+- Reconverge at a PP-restoring Mayor checkpoint with separate civilian, rally, and supply outcomes
 - Use any one to four currently available permanent or guest characters without locked story slots
 - Manage battle composition independently from the ten permanent ship-role assignments
 - Track Berries, bounty, hull, PP, checkpoints, outcome receipts, and the captain's journal
@@ -45,8 +49,9 @@ Landlubber difficulty:
 - Automatically persist the current run in browser local storage under a clean development save
 
 The five-card keep-one system, six rarities, shards, star upgrades, role effects, artifacts, and the
-legacy East Blue prototype remain implemented and covered as reusable foundations. Orange Town's
-playable story content remains the next milestone after the full Romance Dawn playtest.
+legacy East Blue prototype remain implemented and covered as reusable foundations. Romance Dawn
+has completed its approved Phase 5D closure and hardening pass; Orange Town Phase 6A is playable
+through The Mayor's Resolve, with Buggy's climax and the campaign ending reserved for Phase 6B.
 
 Enemy turns resolve automatically. On a crew turn, select a living enemy card and then choose one
 of the acting fighter's four moves. Guards and self-buffs automatically target the acting fighter;
@@ -59,6 +64,8 @@ slot. Featured characters receive 3x selection weight within their rarity. The f
 also supports Uncommon, Epic, and Mythical. The free Romance Dawn pack uses 48% Common, 20%
 Uncommon, 25% Rare, 6% Epic, and 1% Legendary odds, with Coby, Helmeppo, Alvida, and Morgan featured
 at 3x weight within their rarity.
+Reduced-motion preferences suppress every standard, enhanced, special, aura, and smoke reveal
+animation while preserving the card rarity and selection information.
 Future Free-Roam and Chaos modes will use pack-driven recruitment.
 
 Implemented combat rules:

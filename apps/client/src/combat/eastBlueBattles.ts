@@ -31,7 +31,7 @@ const multiTarget = (id: string, name: string, element: Element, power: number):
 });
 
 function createCrewEnemy(
-  characterId: 'alvida' | 'morgan' | 'helmeppo',
+  characterId: CharacterId,
   slot: number,
   battleIq: number,
 ): FighterDefinition {
@@ -42,6 +42,41 @@ function createCrewEnemy(
     slot,
     battleIq,
     moves: fighter.moves.map((move) => ({ ...move })),
+  };
+}
+
+function createOrangePirate(
+  id: string,
+  name: string,
+  slot: number,
+  style: 'beast' | 'acrobat',
+): FighterDefinition {
+  const acrobat = style === 'acrobat';
+  return {
+    id,
+    name,
+    side: 'enemy',
+    slot,
+    maxHp: acrobat ? 40 : 42,
+    attack: 11,
+    defense: acrobat ? 5 : 6,
+    speed: acrobat ? 14 : 11,
+    types: [acrobat ? 'swordsman' : 'beast'],
+    devilFruitUser: false,
+    battleIq: 20,
+    moves: acrobat
+      ? [
+          damage(`${id}-roof-slash`, 'Roof Slash', 'swordsman', 11),
+          guard(`${id}-tumble`, 'Tumble Away', 'brawler'),
+          stat(`${id}-sand-toss`, 'Sand Toss', 'poison', 'enemy', 'attack'),
+          multiTarget(`${id}-crossfire`, 'Acrobat Crossfire', 'sniper', 4),
+        ]
+      : [
+          damage(`${id}-hook-swing`, 'Hook Swing', 'beast', 11),
+          guard(`${id}-cage-cover`, 'Cage Cover', 'earth'),
+          stat(`${id}-crack-whip`, 'Crack the Whip', 'beast', 'self', 'attack'),
+          multiTarget(`${id}-animal-rush`, 'Animal Rush', 'beast', 4),
+        ],
   };
 }
 
@@ -209,6 +244,23 @@ const morganLastStand = tuneOpeningBossLineup(
   ),
 );
 
+const beastTamersStreet = placeEnemies(
+  createCrewEnemy('mohji', 0, 35),
+  createCrewEnemy('richie', 0, 25),
+  createOrangePirate('beast-pirate', 'Beast Pirate', 0, 'beast'),
+);
+
+const harborDecoy = placeEnemies(
+  createCrewEnemy('mohji', 0, 35),
+  createCrewEnemy('richie', 0, 25),
+);
+
+const acrobatRooftops = placeEnemies(
+  createCrewEnemy('cabaji', 0, 55),
+  createOrangePirate('acrobat-pirate-a', 'Acrobat Pirate', 0, 'acrobat'),
+  createOrangePirate('acrobat-pirate-b', 'Knife-Juggling Pirate', 0, 'acrobat'),
+);
+
 const arlongPirates: FighterDefinition[] = [
   {
     id: 'arlong',
@@ -294,6 +346,9 @@ const encounterEnemies: Record<EncounterId, FighterDefinition[]> = {
   'marine-yard': marineYardResponse,
   'execution-grounds': executionGroundsPatrol,
   'morgan-last-stand': morganLastStand,
+  'beast-tamers-street': beastTamersStreet,
+  'harbor-decoy': harborDecoy,
+  'acrobat-rooftops': acrobatRooftops,
   'shells-town': shellsTownMarines,
   'arlong-park': arlongPirates,
 };
