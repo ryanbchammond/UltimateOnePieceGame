@@ -1,0 +1,262 @@
+import type { NodeChoice, StoryArc, StoryNode } from './types';
+
+export const eastBluePrototypeArc: StoryArc = {
+  id: 'east-blue-prototype',
+  name: 'East Blue Prototype',
+  mapTitle: 'EAST BLUE · STORY ROUTE',
+  mapInstruction: 'Choose the next reachable island from the voyage panel.',
+  start: {
+    nodeId: 'foosha-village',
+    phase: 'map',
+    berries: 100,
+    hull: 100,
+    maxHull: 100,
+    rosterIds: ['luffy', 'zoro', 'sanji', 'nami'],
+    guestIds: [],
+    activePartyIds: ['luffy', 'zoro', 'sanji', 'nami'],
+    roleAssignments: {
+      captain: 'luffy',
+      'fighter-1': 'zoro',
+      'fighter-2': null,
+      'fighter-3': null,
+      doctor: null,
+      navigator: 'nami',
+      helmsman: null,
+      cook: 'sanji',
+      shipwright: null,
+      pet: null,
+    },
+    journalEntry: 'The Straw Hat crew set sail from Foosha Village.',
+  },
+  nodeIds: [
+    'foosha-village',
+    'shells-town',
+    'orange-town',
+    'drifting-wreck',
+    'syrup-village',
+    'baratie',
+    'arlong-park',
+  ],
+};
+
+export const eastBluePrototypeNodes: StoryNode[] = [
+  {
+    id: 'foosha-village',
+    arcId: 'east-blue-prototype',
+    name: 'Foosha Village',
+    subtitle: 'The voyage begins',
+    description: 'The Straw Hat crew makes its final preparations before setting sail across East Blue.',
+    type: 'start',
+    x: 70,
+    y: 285,
+    prerequisites: [],
+  },
+  {
+    id: 'shells-town',
+    arcId: 'east-blue-prototype',
+    name: 'Shells Town',
+    subtitle: 'Marine blockade',
+    description: 'Axe-Hand Morgan\'s Marines have sealed the harbor and demand the crew surrender.',
+    type: 'battle',
+    encounterId: 'shells-town',
+    x: 225,
+    y: 285,
+    prerequisites: ['foosha-village'],
+    victory: {
+      title: 'Shells Town rewards',
+      detail: 'Battle rewards claimed and a new checkpoint secured.',
+      journalEntry: 'Shells Town was cleared. The crew claimed its rewards.',
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: 60 },
+        { type: 'resource', resource: 'bounty', amount: 1200, captainBountyBonus: true },
+        { type: 'checkpoint' },
+      ],
+    },
+  },
+  {
+    id: 'orange-town',
+    arcId: 'east-blue-prototype',
+    name: 'Orange Town',
+    subtitle: 'Town in distress',
+    description: 'Buggy\'s raiders have cornered the townsfolk. Fighting them off will draw attention and damage the ship; paying them avoids the clash.',
+    type: 'event',
+    x: 380,
+    y: 155,
+    prerequisites: ['shells-town'],
+    branch: 'east-blue-detour',
+  },
+  {
+    id: 'drifting-wreck',
+    arcId: 'east-blue-prototype',
+    name: 'Drifting Wreck',
+    subtitle: 'Unclaimed cargo',
+    description: 'A broken merchant vessel drifts between the currents. Its hold is still sealed, and no rival flag is in sight.',
+    type: 'treasure',
+    x: 380,
+    y: 415,
+    prerequisites: ['shells-town'],
+    branch: 'east-blue-detour',
+  },
+  {
+    id: 'syrup-village',
+    arcId: 'east-blue-prototype',
+    name: 'Syrup Village',
+    subtitle: 'A brave liar calls',
+    description: 'Usopp stood against the Black Cat Pirates when no one believed his warning. With the village safe, he is ready to chase his dream at sea.',
+    type: 'recruit',
+    x: 535,
+    y: 285,
+    prerequisites: ['orange-town', 'drifting-wreck'],
+    prerequisiteMode: 'any',
+  },
+  {
+    id: 'baratie',
+    arcId: 'east-blue-prototype',
+    name: 'Baratie',
+    subtitle: 'Rest and repair',
+    description: 'The Baratie welcomes the crew. Its cooks feed everyone while the dockhands repair the ship for the final approach.',
+    type: 'rest',
+    x: 700,
+    y: 285,
+    prerequisites: ['syrup-village'],
+    services: ['crew-assignments', 'tavern'],
+  },
+  {
+    id: 'arlong-park',
+    arcId: 'east-blue-prototype',
+    name: 'Arlong Park',
+    subtitle: 'East Blue boss',
+    description: 'Arlong and his officers wait behind the walls of Arlong Park for the voyage\'s final battle.',
+    type: 'boss',
+    encounterId: 'arlong-park',
+    x: 865,
+    y: 285,
+    prerequisites: ['baratie'],
+    victory: {
+      title: 'Arlong Park rewards',
+      detail: 'Boss rewards claimed.',
+      journalEntry: 'Arlong Park was cleared. The crew claimed its rewards.',
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: 150 },
+        { type: 'resource', resource: 'bounty', amount: 5000, captainBountyBonus: true },
+      ],
+      phase: 'victory',
+    },
+  },
+];
+
+export const eastBluePrototypeConnections: Array<[string, string]> = [
+  ['foosha-village', 'shells-town'],
+  ['shells-town', 'orange-town'],
+  ['shells-town', 'drifting-wreck'],
+  ['orange-town', 'syrup-village'],
+  ['drifting-wreck', 'syrup-village'],
+  ['syrup-village', 'baratie'],
+  ['baratie', 'arlong-park'],
+];
+
+export const eastBluePrototypeChoices: Record<string, NodeChoice[]> = {
+  'orange-town': [
+    {
+      id: 'defend-town',
+      label: 'Defend the townsfolk',
+      detail: 'Gain 400 bounty, but the ship takes 15 hull damage in the crossfire.',
+      consequences: [
+        { type: 'resource', resource: 'bounty', amount: 400 },
+        { type: 'hull-damage', amount: 15, protectedByShipwright: true },
+      ],
+      outcome: {
+        title: 'Orange Town defended',
+        detail: 'The town is safe and the voyage continues.',
+        journalEntry: 'The crew defended Orange Town and earned local renown.',
+      },
+    },
+    {
+      id: 'pay-passage',
+      label: 'Pay for safe passage',
+      detail: 'Spend 30 Berries and lose 75 bounty, preserving the ship.',
+      requirements: [{ type: 'berries', amount: 30 }],
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: -30 },
+        { type: 'resource', resource: 'bounty', amount: -75 },
+      ],
+      outcome: {
+        title: 'Quiet passage secured',
+        detail: 'The crew avoided a fight at a cost.',
+        journalEntry: 'The crew paid for quiet passage through Orange Town.',
+      },
+    },
+    {
+      id: 'navigate-canals',
+      label: 'Chart an escape through the canals',
+      detail: 'Requires a Navigator. Lose 5 hull, or avoid all damage with an ideal Navigator.',
+      requirements: [{ type: 'role', role: 'navigator' }],
+      consequences: [
+        {
+          type: 'hull-damage',
+          amount: 5,
+          protectedByShipwright: true,
+          idealRole: 'navigator',
+          idealRoleAmount: 0,
+        },
+      ],
+      outcome: {
+        title: 'Canal route cleared',
+        detail: 'The Navigator found a way through Orange Town.',
+        journalEntry: 'The Navigator charted an escape through Orange Town\'s canals.',
+      },
+    },
+  ],
+  'drifting-wreck': [
+    {
+      id: 'salvage-cargo',
+      label: 'Salvage the cargo',
+      detail: 'Gain 75 Berries and a Weathered Log Pose artifact.',
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: 75 },
+        { type: 'artifact', artifactId: 'weathered-log-pose' },
+      ],
+      outcome: {
+        title: 'Wreck salvaged',
+        detail: 'Useful cargo was recovered from the drifting wreck.',
+        journalEntry: 'A drifting wreck yielded Berries and a Weathered Log Pose.',
+      },
+    },
+  ],
+  'syrup-village': [
+    {
+      id: 'welcome-usopp',
+      label: 'Welcome Usopp aboard',
+      detail: 'Recruit Usopp, assign him to an open Fighter role, and unlock him for the active battle party.',
+      consequences: [
+        {
+          type: 'recruit',
+          characterId: 'usopp',
+          preferredRoles: ['fighter-2', 'fighter-3', 'fighter-1'],
+        },
+      ],
+      outcome: {
+        title: 'New crewmate',
+        detail: 'Usopp joined the Straw Hat crew.',
+        journalEntry: 'Usopp joined the crew at Syrup Village.',
+      },
+    },
+  ],
+  baratie: [
+    {
+      id: 'dock-and-repair',
+      label: 'Dock for repairs',
+      detail: 'Restore the ship to full hull integrity and set a checkpoint.',
+      consequences: [
+        { type: 'restore', target: 'hull' },
+        { type: 'restore', target: 'move-pp' },
+        { type: 'checkpoint' },
+      ],
+      outcome: {
+        title: 'Crew restored at Baratie',
+        detail: 'The ship and every authored move are ready for the next leg.',
+        journalEntry: 'The Baratie restored the ship and became a new checkpoint.',
+      },
+    },
+  ],
+};

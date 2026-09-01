@@ -1,0 +1,157 @@
+import { create } from 'zustand';
+import { createDemoBattle } from '../combat/demoBattle';
+import { getEncounterFighters } from '../combat/eastBlueBattles';
+import { createStartingRoleAssignments, startingActivePartyIds } from '../crew/characters';
+import {
+  chooseEnemyAction,
+  createBattle,
+  getCurrentFighter,
+  getRemainingPp,
+  getUsableMoves,
+  getValidTargets,
+  resolveAction,
+} from '../combat/engine';
+import type { BattleState } from '../combat/types';
+import type { CharacterId, CharacterMovePp, EncounterId, RoleAssignments } from '../run/types';
+import { useRunStore } from './runStore';
+
+interface BattleStoreState {
+  battle: BattleState;
+  encounterId: EncounterId | null;
+  activePartyIds: CharacterId[];
+  roleAssignments: RoleAssignments;
+  characterStars: Partial<Record<CharacterId, number>>;
+  characterMovePp: CharacterMovePp;
+  selectedTargetId: string;
+  selectTarget: (fighterId: string) => void;
+  useMove: (moveId: string) => void;
+  takeEnemyTurn: () => void;
+  startEncounter: (
+    encounterId: EncounterId,
+    activePartyIds?: CharacterId[],
+    roleAssignments?: RoleAssignments,
+    characterStars?: Partial<Record<CharacterId, number>>,
+    characterMovePp?: CharacterMovePp,
+  ) => void;
+  restart: () => void;
+}
+
+function firstLivingEnemy(battle: BattleState): string {
+  return battle.fighters.find((fighter) => fighter.side === 'enemy' && fighter.hp > 0)?.id ?? '';
+}
+
+const initialBattle = createDemoBattle();
+
+export const useBattleStore = create<BattleStoreState>((set, get) => ({
+  battle: initialBattle,
+  encounterId: null,
+  activePartyIds: [...startingActivePartyIds],
+  roleAssignments: createStartingRoleAssignments(),
+  characterStars: {},
+  characterMovePp: {},
+  selectedTargetId: firstLivingEnemy(initialBattle),
+
+  selectTarget: (fighterId) => {
+    const { battle } = get();
+    const target = battle.fighters.find(
+      (fighter) => fighter.id === fighterId && fighter.side === 'enemy' && fighter.hp > 0,
+    );
+    if (target) set({ selectedTargetId: target.id });
+  },
+
+  useMove: (moveId) => {
+    const { battle, selectedTargetId, encounterId, characterMovePp } = get();
+    const actor = getCurrentFighter(battle);
+    if (!actor || actor.side !== 'player') return;
+
+    const move = getUsableMoves(actor).find((candidate) => candidate.id === moveId);
+    if (!move) return;
+    const targets = getValidTargets(battle, actor, move);
+    const target = targets.find((fighter) => fighter.id === selectedTargetId) ?? targets[0];
+    if (!target) return;
+
+    const nextBattle = resolveAction(battle, {
+      actorId: actor.id,
+      moveId,
+      targetId: target.id,
+    });
+
+    const updatedActor = nextBattle.fighters.find((fighter) => fighter.id === actor.id);
+    const authoredMove = actor.moves.find((candidate) => candidate.id === move.id);
+    const nextCharacterMovePp = authoredMove && updatedActor
+      ? {
+          ...characterMovePp,
+          [actor.id]: {
+            ...characterMovePp[actor.id as CharacterId],
+            [authoredMove.id]: getRemainingPp(updatedActor, authoredMove),
+          },
+        }
+      : characterMovePp;
+    if (encounterId && authoredMove && updatedActor) {
+      useRunStore.getState().setCharacterMovePp(
+        actor.id as CharacterId,
+        authoredMove.id,
+        getRemainingPp(updatedActor, authoredMove),
+      );
+    }
+
+    set({
+      battle: nextBattle,
+      characterMovePp: nextCharacterMovePp,
+      selectedTargetId:
+        nextBattle.fighters.find((fighter) => fighter.id === target.id)?.hp === 0
+          ? firstLivingEnemy(nextBattle)
+          : target.id,
+    });
+  },
+
+  takeEnemyTurn: () => {
+    const { battle } = get();
+    const actor = getCurrentFighter(battle);
+    if (!actor || actor.side !== 'enemy') return;
+    set({ battle: resolveAction(battle, chooseEnemyAction(battle)) });
+  },
+
+  startEncounter: (
+    encounterId,
+    activePartyIds = startingActivePartyIds,
+    roleAssignments = createStartingRoleAssignments(),
+    characterStars = {},
+    characterMovePp = {},
+  ) => {
+    const battle = createBattle(
+      getEncounterFighters(
+        encounterId,
+        activePartyIds,
+        roleAssignments,
+        characterStars,
+        characterMovePp,
+      ),
+    );
+    set({
+      battle,
+      encounterId,
+      activePartyIds: [...activePartyIds],
+      roleAssignments: { ...roleAssignments },
+      characterStars: { ...characterStars },
+      characterMovePp: { ...characterMovePp },
+      selectedTargetId: firstLivingEnemy(battle),
+    });
+  },
+
+  restart: () => {
+    const { encounterId, activePartyIds, roleAssignments, characterStars, characterMovePp } = get();
+    const battle = encounterId
+      ? createBattle(
+          getEncounterFighters(
+            encounterId,
+            activePartyIds,
+            roleAssignments,
+            characterStars,
+            characterMovePp,
+          ),
+        )
+      : createDemoBattle();
+    set({ battle, selectedTargetId: firstLivingEnemy(battle) });
+  },
+}));
