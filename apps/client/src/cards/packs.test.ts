@@ -8,6 +8,7 @@ import {
   drawCardsFromPack,
   featuredCharacterWeight,
   getCardAnimationKey,
+  romanceDawnCardPack,
 } from './packs';
 
 describe('card packs', () => {
@@ -71,6 +72,51 @@ describe('card packs', () => {
     expect(getCardAnimationKey('buggy')).toBe('buggy-bomb');
     expect(getCardAnimationKey('smoker')).toBe('white-out');
     expect(getCardAnimationKey('luffy')).toBe('legendary-luffy');
+  });
+
+  it('uses the approved Romance Dawn pool, rarity table, and featured characters', () => {
+    expect(romanceDawnCardPack.cost).toBe(0);
+    expect(romanceDawnCardPack.cardCount).toBe(5);
+    expect(romanceDawnCardPack.guaranteedRarity).toBe('rare');
+    expect(romanceDawnCardPack.rarityOdds).toEqual({
+      common: 48,
+      uncommon: 20,
+      rare: 25,
+      epic: 6,
+      legendary: 1,
+      mythical: 0,
+    });
+    expect(romanceDawnCardPack.characterIds).toEqual([
+      'coby',
+      'johnny',
+      'yosaku',
+      'helmeppo',
+      'alvida',
+      'tashigi',
+      'gin',
+      'morgan',
+      'smoker',
+    ]);
+    expect(romanceDawnCardPack.featuredCharacterIds)
+      .toEqual(['coby', 'helmeppo', 'alvida', 'morgan']);
+
+    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0, 0))).toBe('coby');
+    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.5, 0))).toBe('helmeppo');
+    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.7, 0))).toBe('alvida');
+    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.95, 0))).toBe('morgan');
+    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.995, 0))).toBe('smoker');
+  });
+
+  it('weights Romance Dawn featured cards within rarity and guarantees Rare or better', () => {
+    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.7, 0.59))).toBe('alvida');
+    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.7, 0.6))).toBe('tashigi');
+
+    const cards = drawCardsFromPack(
+      romanceDawnCardPack,
+      sequenceRandom(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    );
+    expect(cards).toEqual(['alvida', 'coby', 'coby', 'coby', 'coby']);
+    expect(getCardAnimationKey('morgan')).toBe('rarity-epic');
   });
 });
 

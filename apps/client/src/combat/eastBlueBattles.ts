@@ -30,13 +30,17 @@ const multiTarget = (id: string, name: string, element: Element, power: number):
   id, name, element, effect: 'multi-target', power, maxPp: 3,
 });
 
-function createAlvida(slot: number): FighterDefinition {
-  const fighter = getCrewCharacter('alvida').fighter;
+function createCrewEnemy(
+  characterId: 'alvida' | 'morgan' | 'helmeppo',
+  slot: number,
+  battleIq: number,
+): FighterDefinition {
+  const fighter = getCrewCharacter(characterId).fighter;
   return {
     ...fighter,
     side: 'enemy',
     slot,
-    battleIq: 45,
+    battleIq,
     moves: fighter.moves.map((move) => ({ ...move })),
   };
 }
@@ -69,94 +73,141 @@ function createAlvidaPirate(
 }
 
 const alvidaDeckPirates: FighterDefinition[] = [
-  createAlvida(0),
+  createCrewEnemy('alvida', 0, 45),
   createAlvidaPirate('peppoko', 'Peppoko', 1, 10),
   createAlvidaPirate('poppoko', 'Poppoko', 2, 9),
 ];
 
 const alvidaHoldPirates: FighterDefinition[] = [
-  createAlvida(0),
+  createCrewEnemy('alvida', 0, 45),
   createAlvidaPirate('heppoko', 'Heppoko', 1, 10),
 ];
 
-const shellsTownMarines: FighterDefinition[] = [
-  {
-    id: 'morgan',
-    name: 'Axe-Hand Morgan',
-    side: 'enemy',
-    slot: 0,
-    maxHp: 92,
-    attack: 19,
-    defense: 11,
-    speed: 15,
-    types: ['swordsman'],
-    devilFruitUser: false,
-    battleIq: 70,
-    moves: [
-      damage('axe-drop', 'Axe Drop', 'swordsman', 20),
-      guard('iron-authority', 'Iron Authority', 'swordsman'),
-      stat('tyrants-order', "Tyrant's Order", 'brawler', 'self', 'attack'),
-      multiTarget('execution-sweep', 'Execution Sweep', 'swordsman', 9),
-    ],
-  },
-  {
-    id: 'ripper',
-    name: 'Commander Ripper',
-    side: 'enemy',
-    slot: 1,
-    maxHp: 72,
-    attack: 16,
-    defense: 9,
-    speed: 13,
-    types: ['swordsman'],
-    devilFruitUser: false,
-    battleIq: 55,
-    moves: [
-      damage('saber-rush', 'Saber Rush', 'swordsman', 17),
-      guard('marine-formation', 'Marine Formation', 'swordsman'),
-      stat('commanding-shout', 'Commanding Shout', 'brawler', 'self', 'defense'),
-      multiTarget('saber-line', 'Saber Line', 'swordsman', 7),
-    ],
-  },
-  {
-    id: 'marine-gunner',
-    name: 'Marine Gunner',
-    side: 'enemy',
-    slot: 2,
-    maxHp: 66,
-    attack: 16,
-    defense: 8,
-    speed: 14,
-    types: ['sniper'],
-    devilFruitUser: false,
-    battleIq: 40,
-    moves: [
-      damage('rifle-volley', 'Rifle Volley', 'sniper', 18),
-      guard('take-cover', 'Take Cover', 'sniper'),
-      stat('warning-shot', 'Warning Shot', 'sniper', 'enemy', 'attack'),
-      multiTarget('powder-volley', 'Powder Volley', 'fire', 7),
-    ],
-  },
-  {
-    id: 'helmeppo',
-    name: 'Helmeppo',
-    side: 'enemy',
-    slot: 3,
-    maxHp: 58,
-    attack: 14,
-    defense: 7,
-    speed: 11,
-    types: ['brawler'],
-    devilFruitUser: false,
-    battleIq: 20,
-    moves: [
-      damage('pistol-shot', 'Pistol Shot', 'sniper', 15),
-      guard('human-shield', 'Human Shield', 'brawler'),
-      stat('cheap-taunt', 'Cheap Taunt', 'brawler', 'enemy', 'defense'),
-      multiTarget('wild-barrage', 'Wild Barrage', 'sniper', 6),
-    ],
-  },
-];
+const commanderRipper: FighterDefinition = {
+  id: 'ripper',
+  name: 'Commander Ripper',
+  side: 'enemy',
+  slot: 0,
+  maxHp: 72,
+  attack: 16,
+  defense: 9,
+  speed: 13,
+  types: ['swordsman'],
+  devilFruitUser: false,
+  battleIq: 55,
+  moves: [
+    damage('saber-rush', 'Saber Rush', 'swordsman', 17),
+    guard('marine-formation', 'Marine Formation', 'swordsman'),
+    stat('commanding-shout', 'Commanding Shout', 'brawler', 'self', 'defense'),
+    multiTarget('saber-line', 'Saber Line', 'swordsman', 7),
+  ],
+};
+
+const marineGunner: FighterDefinition = {
+  id: 'marine-gunner',
+  name: 'Marine Gunner',
+  side: 'enemy',
+  slot: 0,
+  maxHp: 66,
+  attack: 16,
+  defense: 8,
+  speed: 14,
+  types: ['sniper'],
+  devilFruitUser: false,
+  battleIq: 40,
+  moves: [
+    damage('rifle-volley', 'Rifle Volley', 'sniper', 18),
+    guard('take-cover', 'Take Cover', 'sniper'),
+    stat('warning-shot', 'Warning Shot', 'sniper', 'enemy', 'attack'),
+    multiTarget('powder-volley', 'Powder Volley', 'fire', 7),
+  ],
+};
+
+const marineGuard: FighterDefinition = {
+  id: 'marine-guard',
+  name: 'Marine Guard',
+  side: 'enemy',
+  slot: 0,
+  maxHp: 48,
+  attack: 11,
+  defense: 6,
+  speed: 12,
+  types: ['swordsman'],
+  devilFruitUser: false,
+  battleIq: 30,
+  moves: [
+    damage('guard-saber', 'Guard Saber', 'swordsman', 12),
+    guard('hold-formation', 'Hold Formation', 'swordsman'),
+    stat('steady-ranks', 'Steady Ranks', 'brawler', 'self', 'defense'),
+    multiTarget('crossing-slash', 'Crossing Slash', 'swordsman', 4),
+  ],
+};
+
+const marineRecruit: FighterDefinition = {
+  id: 'marine-recruit',
+  name: 'Marine Recruit',
+  side: 'enemy',
+  slot: 0,
+  maxHp: 42,
+  attack: 10,
+  defense: 5,
+  speed: 10,
+  types: ['brawler'],
+  devilFruitUser: false,
+  battleIq: 20,
+  moves: [
+    damage('recruit-strike', 'Recruit Strike', 'brawler', 10),
+    guard('nervous-guard', 'Nervous Guard', 'brawler'),
+    stat('shouted-warning', 'Shouted Warning', 'brawler', 'enemy', 'defense'),
+    multiTarget('rushed-volley', 'Rushed Volley', 'sniper', 3),
+  ],
+};
+
+function placeEnemies(...fighters: FighterDefinition[]): FighterDefinition[] {
+  return fighters.map((fighter, slot) => ({
+    ...fighter,
+    slot,
+    moves: fighter.moves.map((move) => ({ ...move })),
+  }));
+}
+
+function tuneOpeningBossLineup(fighters: FighterDefinition[]): FighterDefinition[] {
+  return fighters.map((fighter) => ({
+    ...fighter,
+    maxHp: Math.round(fighter.maxHp * 0.6),
+    attack: Math.round(fighter.attack * 0.5),
+    moves: fighter.moves.map((move): Move =>
+      move.effect === 'damage' || move.effect === 'multi-target'
+        ? { ...move, power: Math.max(1, Math.round(move.power * 0.5)) }
+        : { ...move }),
+  }));
+}
+
+const shellsTownMarines = placeEnemies(
+  createCrewEnemy('morgan', 0, 70),
+  commanderRipper,
+  marineGunner,
+  createCrewEnemy('helmeppo', 0, 20),
+);
+
+const marineYardResponse = placeEnemies(
+  createCrewEnemy('helmeppo', 0, 20),
+  marineGuard,
+  marineRecruit,
+);
+
+const executionGroundsPatrol = placeEnemies(
+  createCrewEnemy('helmeppo', 0, 20),
+  marineRecruit,
+);
+
+const morganLastStand = tuneOpeningBossLineup(
+  placeEnemies(
+    createCrewEnemy('morgan', 0, 70),
+    commanderRipper,
+    marineGunner,
+  ),
+);
 
 const arlongPirates: FighterDefinition[] = [
   {
@@ -240,6 +291,9 @@ const arlongPirates: FighterDefinition[] = [
 const encounterEnemies: Record<EncounterId, FighterDefinition[]> = {
   'alvida-deck': alvidaDeckPirates,
   'alvida-hold': alvidaHoldPirates,
+  'marine-yard': marineYardResponse,
+  'execution-grounds': executionGroundsPatrol,
+  'morgan-last-stand': morganLastStand,
   'shells-town': shellsTownMarines,
   'arlong-park': arlongPirates,
 };

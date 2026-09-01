@@ -30,6 +30,7 @@ function fixtureRun(overrides: Partial<RunSnapshot> = {}): RunSnapshot {
     hull: 80,
     maxHull: 100,
     completedNodeIds: [],
+    visitedNodeIds: [fixtureNode.id],
     currentNodeId: fixtureNode.id,
     checkpointNodeId: fixtureNode.id,
     chosenBranches: {},

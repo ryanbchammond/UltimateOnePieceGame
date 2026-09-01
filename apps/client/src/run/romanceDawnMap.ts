@@ -4,7 +4,7 @@ export const romanceDawnArc: StoryArc = {
   id: 'romance-dawn',
   name: 'Romance Dawn',
   mapTitle: 'ROMANCE DAWN · STORY ROUTE',
-  mapInstruction: 'Follow Luffy and Coby toward Shells Town.',
+  mapInstruction: 'Free Zoro and confront Morgan at the Marine base.',
   start: {
     nodeId: 'foosha-departure',
     phase: 'node',
@@ -35,6 +35,12 @@ export const romanceDawnArc: StoryArc = {
     'alvida-hold',
     'alvida-hold-battle',
     'cobys-resolve',
+    'shells-town-arrival',
+    'marine-yard',
+    'execution-grounds',
+    'free-pirate-hunter',
+    'morgan-last-stand',
+    'marines-farewell',
   ],
 };
 
@@ -47,7 +53,7 @@ export const romanceDawnNodes: StoryNode[] = [
     description:
       'The morning tide is rising. Luffy has a tiny boat, a barrel of supplies, and one last chance to prepare before chasing the Grand Line.',
     type: 'start',
-    x: 75,
+    x: 60,
     y: 270,
     prerequisites: [],
   },
@@ -59,7 +65,7 @@ export const romanceDawnNodes: StoryNode[] = [
     description:
       'After surviving the whirlpool inside a barrel, Luffy meets Coby aboard Alvida\'s ship. Coby wants freedom but fears his captain.',
     type: 'event',
-    x: 235,
+    x: 170,
     y: 270,
     prerequisites: ['foosha-departure'],
   },
@@ -72,8 +78,8 @@ export const romanceDawnNodes: StoryNode[] = [
       'Luffy and Coby charge onto the main deck, where Alvida and two pirates are ready to crush the uprising.',
     type: 'battle',
     encounterId: 'alvida-deck',
-    x: 440,
-    y: 145,
+    x: 280,
+    y: 130,
     prerequisites: ['barrel-at-sea'],
     branch: 'alvida-route',
     victory: {
@@ -94,8 +100,8 @@ export const romanceDawnNodes: StoryNode[] = [
     description:
       'Below deck, Coby shows Luffy the supplies Alvida hoarded beside the cells of sailors who tried to resist her.',
     type: 'event',
-    x: 420,
-    y: 395,
+    x: 280,
+    y: 410,
     prerequisites: ['barrel-at-sea'],
     branch: 'alvida-route',
   },
@@ -108,8 +114,8 @@ export const romanceDawnNodes: StoryNode[] = [
       'Alvida corners the escaping pair with one loyal pirate. The quiet route has bought Luffy room to fight.',
     type: 'battle',
     encounterId: 'alvida-hold',
-    x: 625,
-    y: 395,
+    x: 410,
+    y: 410,
     prerequisites: ['alvida-hold'],
     victory: {
       title: 'Alvida defeated',
@@ -129,10 +135,115 @@ export const romanceDawnNodes: StoryNode[] = [
     description:
       'With Alvida behind them, Coby finally says his dream aloud: he will join the Marines, even if he must confront them beside Luffy first.',
     type: 'event',
-    x: 850,
-    y: 270,
+    x: 440,
+    y: 160,
     prerequisites: ['alvida-deck', 'alvida-hold-battle'],
     prerequisiteMode: 'any',
+  },
+  {
+    id: 'shells-town-arrival',
+    arcId: 'romance-dawn',
+    name: 'Shells Town',
+    subtitle: 'A town under Morgan',
+    description:
+      'Rika is punished for bringing food to the prisoner in the Marine yard. Luffy can confront Helmeppo openly or let Coby gather quieter information about the base.',
+    type: 'event',
+    x: 550,
+    y: 270,
+    prerequisites: ['cobys-resolve'],
+  },
+  {
+    id: 'marine-yard',
+    arcId: 'romance-dawn',
+    name: 'Marine Yard',
+    subtitle: 'Stand with Rika',
+    description:
+      'Luffy openly defies Helmeppo after helping Rika. Helmeppo calls two Marines into the yard to make an example of them.',
+    type: 'battle',
+    encounterId: 'marine-yard',
+    x: 665,
+    y: 130,
+    prerequisites: ['shells-town-arrival'],
+    branch: 'shells-route',
+    victory: {
+      title: 'Marine yard cleared',
+      detail: 'The public stand protected Rika and exposed Morgan\'s rule to the whole town.',
+      journalEntry: 'Luffy defeated Helmeppo\'s response force in the Marine yard.',
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: 60 },
+        { type: 'resource', resource: 'bounty', amount: 1200, captainBountyBonus: true },
+      ],
+    },
+  },
+  {
+    id: 'execution-grounds',
+    arcId: 'romance-dawn',
+    name: 'Execution Grounds',
+    subtitle: 'Quiet approach',
+    description:
+      'Coby\'s information reveals a lightly guarded route to Zoro. Helmeppo and one nervous Marine discover the escape attempt.',
+    type: 'battle',
+    encounterId: 'execution-grounds',
+    x: 665,
+    y: 410,
+    prerequisites: ['shells-town-arrival'],
+    branch: 'shells-route',
+    victory: {
+      title: 'Patrol outmaneuvered',
+      detail: 'The quiet approach reached Zoro with a smaller fight and less public notoriety.',
+      journalEntry: 'Luffy and Coby slipped through the execution grounds and defeated its patrol.',
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: 30 },
+        { type: 'resource', resource: 'bounty', amount: 600, captainBountyBonus: true },
+      ],
+    },
+  },
+  {
+    id: 'free-pirate-hunter',
+    arcId: 'romance-dawn',
+    name: 'Free the Pirate Hunter',
+    subtitle: 'Three swords reclaimed',
+    description:
+      'Zoro accepts Luffy\'s bargain: if Luffy returns his swords and they survive Morgan\'s attack, the Pirate Hunter will join his crew.',
+    type: 'recruit',
+    x: 775,
+    y: 270,
+    prerequisites: ['marine-yard', 'execution-grounds'],
+    prerequisiteMode: 'any',
+  },
+  {
+    id: 'morgan-last-stand',
+    arcId: 'romance-dawn',
+    name: 'Morgan\'s Last Stand',
+    subtitle: 'The statue falls',
+    description:
+      'Morgan orders Commander Ripper and a Marine gunner to crush Luffy\'s new crew before the town can rise against him.',
+    type: 'boss',
+    encounterId: 'morgan-last-stand',
+    x: 875,
+    y: 150,
+    prerequisites: ['free-pirate-hunter'],
+    victory: {
+      title: 'Morgan defeated',
+      detail: 'Morgan\'s tyranny is broken and the Marines of Shells Town finally lower their weapons.',
+      journalEntry: 'Luffy and his allies defeated Axe-Hand Morgan and liberated Shells Town.',
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: 100 },
+        { type: 'resource', resource: 'bounty', amount: 3000, captainBountyBonus: true },
+      ],
+    },
+  },
+  {
+    id: 'marines-farewell',
+    arcId: 'romance-dawn',
+    name: 'A Marine\'s Farewell',
+    subtitle: 'Dreams choose separate courses',
+    description:
+      'Coby remains in Shells Town to pursue his Marine dream. Zoro takes his place beside Luffy as the first permanent crewmate of the voyage.',
+    type: 'event',
+    x: 875,
+    y: 400,
+    prerequisites: ['morgan-last-stand'],
   },
 ];
 
@@ -143,6 +254,13 @@ export const romanceDawnConnections: Array<[string, string]> = [
   ['alvida-hold', 'alvida-hold-battle'],
   ['alvida-deck', 'cobys-resolve'],
   ['alvida-hold-battle', 'cobys-resolve'],
+  ['cobys-resolve', 'shells-town-arrival'],
+  ['shells-town-arrival', 'marine-yard'],
+  ['shells-town-arrival', 'execution-grounds'],
+  ['marine-yard', 'free-pirate-hunter'],
+  ['execution-grounds', 'free-pirate-hunter'],
+  ['free-pirate-hunter', 'morgan-last-stand'],
+  ['morgan-last-stand', 'marines-farewell'],
 ];
 
 export const romanceDawnChoices: Record<string, NodeChoice[]> = {
@@ -234,6 +352,74 @@ export const romanceDawnChoices: Record<string, NodeChoice[]> = {
         title: 'Course set for Shells Town',
         detail: 'Coby remains available as a guest for the next leg.',
         journalEntry: 'Luffy agreed to take Coby to the Marine base at Shells Town.',
+      },
+    },
+  ],
+  'shells-town-arrival': [
+    {
+      id: 'help-rika-openly',
+      label: 'Stand with Rika openly',
+      detail: 'Challenge Helmeppo in public. Face him and two Marines for greater rewards.',
+      consequences: [{ type: 'route', branch: 'shells-route', nodeId: 'marine-yard' }],
+      outcome: {
+        title: 'Open defiance',
+        detail: 'Luffy protects Rika and draws Helmeppo\'s full response into the Marine yard.',
+        journalEntry: 'Luffy openly stood with Rika against Helmeppo.',
+      },
+    },
+    {
+      id: 'gather-information-quietly',
+      label: 'Gather information quietly',
+      detail: 'Let Coby scout the base. Reach Zoro through a smaller patrol for lower rewards.',
+      consequences: [{ type: 'route', branch: 'shells-route', nodeId: 'execution-grounds' }],
+      outcome: {
+        title: 'Quiet approach',
+        detail: 'Coby learns the guard rotation and identifies a less defended path to Zoro.',
+        journalEntry: 'Coby quietly gathered information about Zoro and the Marine base.',
+      },
+    },
+  ],
+  'free-pirate-hunter': [
+    {
+      id: 'return-zoros-swords',
+      label: 'Return Zoro\'s swords',
+      detail: 'Recruit Zoro permanently. You decide whether he enters the active battle lineup.',
+      consequences: [
+        {
+          type: 'recruit',
+          characterId: 'zoro',
+          preferredRoles: ['fighter-1', 'fighter-2', 'fighter-3'],
+        },
+      ],
+      outcome: {
+        title: 'The Pirate Hunter joins',
+        detail: 'Zoro becomes a permanent crewmate and is available for Morgan\'s Last Stand.',
+        journalEntry: 'Luffy returned Zoro\'s swords, and Zoro joined the crew.',
+      },
+    },
+  ],
+  'marines-farewell': [
+    {
+      id: 'honor-cobys-farewell',
+      label: 'Honor Coby\'s decision',
+      detail: 'Coby leaves as a guest. Set a checkpoint and open the free Romance Dawn pack.',
+      consequences: [
+        { type: 'guest', action: 'remove', characterId: 'coby' },
+        { type: 'checkpoint' },
+        {
+          type: 'pack',
+          packId: 'romance-dawn',
+          resume: {
+            phase: 'map',
+            activeArcId: 'orange-town',
+            currentNodeId: 'orange-town-harbor',
+          },
+        },
+      ],
+      outcome: {
+        title: 'Romance Dawn complete',
+        detail: 'Coby begins his Marine path while Luffy and Zoro prepare for Orange Town.',
+        journalEntry: 'Luffy and Zoro said farewell to Coby and set sail for Orange Town.',
       },
     },
   ],

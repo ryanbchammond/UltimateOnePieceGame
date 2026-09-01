@@ -69,8 +69,38 @@ export const baratieCardPack: CardPackDefinition = {
   featuredCharacterWeight,
 };
 
+export const romanceDawnCardPack: CardPackDefinition = {
+  id: 'romance-dawn',
+  name: 'Romance Dawn Card Pack',
+  cost: 0,
+  cardCount: cardsPerPack,
+  guaranteedRarity: 'rare',
+  rarityOdds: {
+    common: 48,
+    uncommon: 20,
+    rare: 25,
+    epic: 6,
+    legendary: 1,
+    mythical: 0,
+  },
+  characterIds: [
+    'coby',
+    'johnny',
+    'yosaku',
+    'helmeppo',
+    'alvida',
+    'tashigi',
+    'gin',
+    'morgan',
+    'smoker',
+  ],
+  featuredCharacterIds: ['coby', 'helmeppo', 'alvida', 'morgan'],
+  featuredCharacterWeight,
+};
+
 export const cardPacks: Record<CardPackId, CardPackDefinition> = {
   'baratie-east-blue': baratieCardPack,
+  'romance-dawn': romanceDawnCardPack,
 };
 
 export function getCardPack(packId: CardPackId): CardPackDefinition {

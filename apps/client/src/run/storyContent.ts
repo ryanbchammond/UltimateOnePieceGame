@@ -10,16 +10,26 @@ import {
   romanceDawnConnections,
   romanceDawnNodes,
 } from './romanceDawnMap';
+import {
+  orangeTownArc,
+  orangeTownChoices,
+  orangeTownConnections,
+  orangeTownNodes,
+} from './orangeTownMap';
 import type { NodeService, RunSnapshot, StoryArc, StoryContent, StoryNode } from './types';
 
 // The approved alpha remains active while Romance Dawn and Orange Town are authored. Keeping the
 // legacy content behind this boundary lets the UI and stores stop depending on a specific saga.
 export const activeStoryContent: StoryContent = {
   startArcId: 'romance-dawn',
-  arcs: [romanceDawnArc, eastBluePrototypeArc],
-  nodes: [...romanceDawnNodes, ...eastBluePrototypeNodes],
-  connections: [...romanceDawnConnections, ...eastBluePrototypeConnections],
-  choices: { ...romanceDawnChoices, ...eastBluePrototypeChoices },
+  arcs: [romanceDawnArc, orangeTownArc, eastBluePrototypeArc],
+  nodes: [...romanceDawnNodes, ...orangeTownNodes, ...eastBluePrototypeNodes],
+  connections: [
+    ...romanceDawnConnections,
+    ...orangeTownConnections,
+    ...eastBluePrototypeConnections,
+  ],
+  choices: { ...romanceDawnChoices, ...orangeTownChoices, ...eastBluePrototypeChoices },
 };
 
 export const storyNodes = activeStoryContent.nodes;
@@ -72,6 +82,18 @@ export function getStoryConnectionsForArc(
 
 export function isNodeCompleted(run: RunSnapshot, nodeId: string): boolean {
   return run.completedNodeIds.includes(nodeId);
+}
+
+export function isNodeVisited(run: RunSnapshot, nodeId: string): boolean {
+  return run.visitedNodeIds.includes(nodeId);
+}
+
+export function getVisitedStoryNodesForArc(
+  run: RunSnapshot,
+  content: StoryContent = activeStoryContent,
+): StoryNode[] {
+  return getStoryNodesForArc(run.activeArcId, content)
+    .filter((node) => isNodeVisited(run, node.id));
 }
 
 export function isNodeLockedByBranch(run: RunSnapshot, node: StoryNode): boolean {

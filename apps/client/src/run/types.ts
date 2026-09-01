@@ -18,10 +18,19 @@ export type MapNodeType =
   | 'recruit'
   | 'rest'
   | 'boss';
-export type EncounterId = 'shells-town' | 'arlong-park' | 'alvida-deck' | 'alvida-hold';
+export type EncounterId =
+  | 'shells-town'
+  | 'arlong-park'
+  | 'alvida-deck'
+  | 'alvida-hold'
+  | 'marine-yard'
+  | 'execution-grounds'
+  | 'morgan-last-stand';
 export type CharacterId =
   | 'luffy'
   | 'alvida'
+  | 'morgan'
+  | 'helmeppo'
   | 'zoro'
   | 'sanji'
   | 'nami'
@@ -49,7 +58,7 @@ export type ShipRole =
 
 export type RoleAssignments = Record<ShipRole, CharacterId | null>;
 export type CharacterMovePp = Partial<Record<CharacterId, Record<string, number>>>;
-export type CardPackId = 'baratie-east-blue';
+export type CardPackId = 'baratie-east-blue' | 'romance-dawn';
 
 export interface RewardChange {
   label: string;
@@ -140,6 +149,7 @@ export interface RunSnapshot {
   hull: number;
   maxHull: number;
   completedNodeIds: string[];
+  visitedNodeIds: string[];
   currentNodeId: string | null;
   checkpointNodeId: string;
   chosenBranches: Record<string, string>;

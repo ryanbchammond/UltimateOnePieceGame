@@ -71,6 +71,7 @@ function initialSnapshot(): RunSnapshot {
     hull: start.hull,
     maxHull: start.maxHull,
     completedNodeIds: [],
+    visitedNodeIds: [],
     currentNodeId: null,
     checkpointNodeId: start.nodeId,
     chosenBranches: {},
@@ -97,6 +98,7 @@ function newRunSnapshot(): RunSnapshot {
     ...snapshot,
     phase: arc.start.phase,
     completedNodeIds: arc.start.phase === 'map' ? [arc.start.nodeId] : [],
+    visitedNodeIds: [arc.start.nodeId],
     currentNodeId: arc.start.nodeId,
     chosenBranches: {},
     artifacts: [],
@@ -132,8 +134,21 @@ function getRunStorage(): StateStorage {
 const runStorage = createJSONStorage(getRunStorage);
 
 export function migrateRunState(persistedState: unknown, version: number): RunSnapshot {
-  if (version >= 1) return persistedState as RunSnapshot;
-  return initialSnapshot();
+  if (version >= 2) return persistedState as RunSnapshot;
+  if (version < 1 || !persistedState || typeof persistedState !== 'object') {
+    return initialSnapshot();
+  }
+
+  const snapshot = persistedState as RunSnapshot;
+  return {
+    ...snapshot,
+    visitedNodeIds: [
+      ...new Set([
+        ...snapshot.completedNodeIds,
+        ...(snapshot.currentNodeId ? [snapshot.currentNodeId] : []),
+      ]),
+    ],
+  };
 }
 
 function createRewardReceipt(
@@ -161,6 +176,7 @@ function completeCurrentNode(state: RunStoreState, journalEntry: string): Partia
   return {
     phase: 'map',
     completedNodeIds: [...new Set([...state.completedNodeIds, node.id])],
+    visitedNodeIds: [...new Set([...state.visitedNodeIds, node.id])],
     chosenBranches: node.branch
       ? { ...state.chosenBranches, [node.branch]: node.id }
       : state.chosenBranches,
@@ -184,6 +200,7 @@ export const useRunStore = create<RunStoreState>()(
 
         set({
           currentNodeId: node.id,
+          visitedNodeIds: [...new Set([...state.visitedNodeIds, node.id])],
           phase: node.type === 'battle' || node.type === 'boss' ? 'battle' : 'node',
           pendingPack: null,
           crewAssignmentWindow: null,
@@ -412,6 +429,7 @@ export const useRunStore = create<RunStoreState>()(
                 phase: resume.phase,
                 activeArcId: resume.activeArcId,
                 currentNodeId: resume.currentNodeId,
+                visitedNodeIds: [...new Set([...state.visitedNodeIds, resume.currentNodeId])],
               }
             : {}),
           journal: [...state.journal, summary].slice(-12),
@@ -477,7 +495,7 @@ export const useRunStore = create<RunStoreState>()(
     }),
     {
       name: runStorageKey,
-      version: 1,
+      version: 2,
       storage: runStorage,
       migrate: migrateRunState,
     },

@@ -8,6 +8,7 @@ import {
   currentMaxStarLevel,
   firstStarUpgradeCost,
   getCardAnimationKey,
+  getCardPack,
 } from '../cards/packs';
 import {
   getCrewCharacter,
@@ -86,8 +87,8 @@ export function RunSetup() {
         <p className="eyebrow">Romance Dawn vertical slice</p>
         <h2>Set sail from Foosha Village</h2>
         <p>
-          Begin Luffy's voyage, free Coby from Alvida, and choose between an open challenge or an
-          infiltration through the pirate ship's hold.
+          Begin Luffy's voyage, free Coby from Alvida, recruit Zoro in Shells Town, and bring down
+          Axe-Hand Morgan across two meaningful story branches.
         </p>
       </div>
       <div className="run-settings" aria-label="Run settings">
@@ -237,7 +238,7 @@ export function NodePanel() {
       <p className="eyebrow">{nodeTypeLabel(node)}</p>
       <h2>{node.name}</h2>
       <p>{node.description}</p>
-      {nodeOffersService(node.id, 'tavern') && <TavernPanel />}
+      {(nodeOffersService(node.id, 'tavern') || pendingPack) && <TavernPanel />}
       <div className="choice-list">
         {choices.map((choice) => {
           const berryCost = getChoiceBerryCost(choice);
@@ -640,6 +641,8 @@ function TavernPanel() {
   const revealPackCard = useRunStore((state) => state.revealPackCard);
   const claimPackCard = useRunStore((state) => state.claimPackCard);
   const rosterIds = useRunStore((state) => state.rosterIds);
+  const displayedPack = pendingPack ? getCardPack(pendingPack.packId) : baratieCardPack;
+  const arcReward = pendingPack?.source === 'arc-reward';
   const canAffordPack = berries >= baratieCardPack.cost;
   const allRevealed = pendingPack?.cards.every((card) => card.revealed) ?? false;
   const cardsRemaining = pendingPack?.cards.filter((card) => !card.revealed).length ?? 0;
@@ -647,30 +650,34 @@ function TavernPanel() {
   return (
     <section className="tavern-panel" aria-labelledby="tavern-heading">
       <div className="tavern-copy">
-        <p className="panel-label">Baratie card counter</p>
-        <h3 id="tavern-heading">{baratieCardPack.name}</h3>
+        <p className="panel-label">{arcReward ? 'Arc completion reward' : 'Baratie card counter'}</p>
+        <h3 id="tavern-heading">{displayedPack.name}</h3>
         <p>
-          Reveal five East Blue character cards, then choose one to keep. One card is guaranteed
-          Rare or better, and featured characters receive three times their normal selection
-          weight. The four cards you do not choose are lost.
+          Reveal five character cards, then choose one to keep. One card is guaranteed Rare or
+          better, and featured characters receive three times their normal selection weight. The
+          four cards you do not choose are lost.
         </p>
         <div className="rarity-odds" aria-label="Current card rarity odds">
           {cardRarityOrder.map((rarity) => (
             <span className={`rarity-${rarity}`} key={rarity}>
-              {cardRarityLabels[rarity]} <strong>{baratieCardPack.rarityOdds[rarity]}%</strong>
+              {cardRarityLabels[rarity]} <strong>{displayedPack.rarityOdds[rarity]}%</strong>
             </span>
           ))}
         </div>
-        <button
-          className="primary-action"
-          disabled={!canAffordPack || Boolean(pendingPack)}
-          onClick={() => openCardPack()}
-          type="button"
-        >
-          Open five-card pack · {baratieCardPack.cost} Berries
-        </button>
-        {!canAffordPack && !pendingPack && (
-          <small className="tavern-warning">Not enough Berries for a pack.</small>
+        {!arcReward && (
+          <>
+            <button
+              className="primary-action"
+              disabled={!canAffordPack || Boolean(pendingPack)}
+              onClick={() => openCardPack()}
+              type="button"
+            >
+              Open five-card pack · {baratieCardPack.cost} Berries
+            </button>
+            {!canAffordPack && !pendingPack && (
+              <small className="tavern-warning">Not enough Berries for a pack.</small>
+            )}
+          </>
         )}
       </div>
       <div className="reveal-stage">
@@ -700,7 +707,7 @@ function TavernPanel() {
                     onClick={() => revealPackCard(card.cardId)}
                     type="button"
                   >
-                    <span>East Blue</span>
+                    <span>{displayedPack.name.replace(' Card Pack', '')}</span>
                     <strong>?</strong>
                     <small>Card {index + 1}</small>
                   </button>

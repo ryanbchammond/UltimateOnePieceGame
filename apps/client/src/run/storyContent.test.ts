@@ -4,6 +4,7 @@ import {
   getAvailableNodes,
   getStoryConnectionsForArc,
   getStoryNodesForArc,
+  getVisitedStoryNodesForArc,
   getStoryArcForNode,
   getStoryNode,
   storyConnections,
@@ -112,6 +113,7 @@ describe('story content registry', () => {
     const run: RunSnapshot = {
       phase: 'map', mode: 'story', difficulty: 'landlubber', activeArcId: 'romance-dawn',
       berries: 0, bounty: 0, hull: 100, maxHull: 100, completedNodeIds: ['rd-start'],
+      visitedNodeIds: ['rd-start'],
       currentNodeId: 'rd-start', checkpointNodeId: 'rd-start', chosenBranches: {}, artifacts: [],
       journal: [], rosterIds: ['luffy'], guestIds: [], activePartyIds: ['luffy'],
       roleAssignments: createStartingRoleAssignments(), characterShards: {}, characterStars: {},
@@ -125,5 +127,24 @@ describe('story content registry', () => {
     expect(getAvailableNodes(run, content).map((node) => node.id)).toEqual(['rd-finish']);
     expect(getAvailableNodes({ ...run, activeArcId: 'orange-town' }, content).map((node) => node.id))
       .toEqual(['ot-start']);
+  });
+
+  it('reveals only persisted visited nodes on the active arc map', () => {
+    const run: RunSnapshot = {
+      phase: 'map', mode: 'story', difficulty: 'landlubber', activeArcId: 'romance-dawn',
+      berries: 0, bounty: 0, hull: 100, maxHull: 100,
+      completedNodeIds: ['foosha-departure', 'barrel-at-sea'],
+      visitedNodeIds: ['foosha-departure', 'barrel-at-sea', 'alvida-deck'],
+      currentNodeId: 'barrel-at-sea', checkpointNodeId: 'foosha-departure', chosenBranches: {},
+      artifacts: [], journal: [], rosterIds: ['luffy'], guestIds: [], activePartyIds: ['luffy'],
+      roleAssignments: createStartingRoleAssignments(), characterShards: {}, characterStars: {},
+      characterMovePp: {}, packsOpened: 0, pendingPack: null, crewAssignmentWindow: null,
+      latestReward: null,
+    };
+
+    expect(getVisitedStoryNodesForArc(run).map((node) => node.id))
+      .toEqual(['foosha-departure', 'barrel-at-sea', 'alvida-deck']);
+    expect(getAvailableNodes(run).map((node) => node.id))
+      .toEqual(['alvida-deck', 'alvida-hold']);
   });
 });

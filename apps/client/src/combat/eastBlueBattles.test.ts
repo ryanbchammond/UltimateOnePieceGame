@@ -9,8 +9,7 @@ import {
   getValidTargets,
   resolveAction,
 } from './engine';
-import type { EncounterId } from '../run/types';
-import type { CharacterId } from '../run/types';
+import type { CharacterId, CharacterMovePp, EncounterId } from '../run/types';
 import { createStartingRoleAssignments, crewCharacters } from '../crew/characters';
 import type { DamageMove, MultiTargetMove } from './types';
 
@@ -22,8 +21,14 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-function playWithBasicFocusFire(encounterId: EncounterId, activePartyIds?: CharacterId[]) {
-  let battle = createBattle(getEncounterFighters(encounterId, activePartyIds));
+function playWithBasicFocusFire(
+  encounterId: EncounterId,
+  activePartyIds?: CharacterId[],
+  characterMovePp: CharacterMovePp = {},
+) {
+  let battle = createBattle(
+    getEncounterFighters(encounterId, activePartyIds, undefined, {}, characterMovePp),
+  );
   let actions = 0;
   const enemyRandom = seededRandom(20260831);
 
@@ -32,14 +37,18 @@ function playWithBasicFocusFire(encounterId: EncounterId, activePartyIds?: Chara
     if (actor.side === 'enemy') {
       battle = resolveAction(battle, chooseEnemyAction(battle, enemyRandom));
     } else {
-      const target = getValidTargets(battle, actor).sort((left, right) => left.hp - right.hp)[0];
+      const focusTarget = getValidTargets(battle, actor)
+        .sort((left, right) => left.hp - right.hp)[0];
       const damagingMoves = getUsableMoves(actor).filter(
         (move): move is DamageMove | MultiTargetMove =>
           move.effect === 'damage' || move.effect === 'multi-target',
       );
       const move = [...damagingMoves].sort(
-        (left, right) => calculateDamage(actor, target, right) - calculateDamage(actor, target, left),
-      )[0];
+        (left, right) =>
+          calculateDamage(actor, focusTarget, right) - calculateDamage(actor, focusTarget, left),
+      )[0] ?? getUsableMoves(actor)[0];
+      const target = getValidTargets(battle, actor, move)
+        .sort((left, right) => left.hp - right.hp)[0];
       battle = resolveAction(battle, {
         actorId: actor.id,
         moveId: move.id,
@@ -49,7 +58,12 @@ function playWithBasicFocusFire(encounterId: EncounterId, activePartyIds?: Chara
     actions += 1;
   }
 
-  return { battle, actions };
+  const nextMovePp = Object.fromEntries(
+    battle.fighters
+      .filter((fighter) => fighter.side === 'player')
+      .map((fighter) => [fighter.id, { ...fighter.movePp }]),
+  ) as CharacterMovePp;
+  return { battle, actions, characterMovePp: nextMovePp };
 }
 
 describe('East Blue encounters', () => {
@@ -84,6 +98,46 @@ describe('East Blue encounters', () => {
       expect(playWithBasicFocusFire(id, ['luffy', 'coby']).battle.status).toBe('victory');
     },
   );
+
+  it.each<[EncounterId, number]>([
+    ['marine-yard', 3],
+    ['execution-grounds', 2],
+  ])('%s has the approved Marine count and remains winnable with the available lineups', (
+    id,
+    expectedEnemies,
+  ) => {
+    const soloDefinitions = getEncounterFighters(id, ['luffy']);
+    expect(soloDefinitions.filter((fighter) => fighter.side === 'enemy')).toHaveLength(expectedEnemies);
+    expect(soloDefinitions.filter((fighter) => fighter.side === 'enemy')
+      .every((fighter) => fighter.moves.length === 4)).toBe(true);
+    expect(playWithBasicFocusFire(id, ['luffy']).battle.status).toBe('victory');
+    expect(playWithBasicFocusFire(id, ['luffy', 'coby']).battle.status).toBe('victory');
+  });
+
+  it('makes Morgan\'s Last Stand challenging solo and reliable with Zoro or Coby', () => {
+    const enemies = getEncounterFighters('morgan-last-stand', ['luffy'])
+      .filter((fighter) => fighter.side === 'enemy');
+    expect(enemies.map((fighter) => fighter.id)).toEqual(['morgan', 'ripper', 'marine-gunner']);
+    expect(enemies.every((fighter) => fighter.moves.length === 4)).toBe(true);
+    expect(playWithBasicFocusFire('morgan-last-stand', ['luffy']).battle.status).toBe('victory');
+    expect(playWithBasicFocusFire('morgan-last-stand', ['luffy', 'zoro']).battle.status).toBe('victory');
+    expect(playWithBasicFocusFire('morgan-last-stand', ['luffy', 'zoro', 'coby']).battle.status)
+      .toBe('victory');
+  });
+
+  it('keeps the full direct and open route completable without putting Zoro in battle', () => {
+    const party: CharacterId[] = ['luffy', 'coby'];
+    const alvida = playWithBasicFocusFire('alvida-deck', party);
+    expect(alvida.battle.status).toBe('victory');
+    const yard = playWithBasicFocusFire('marine-yard', party, alvida.characterMovePp);
+    expect(yard.battle.status).toBe('victory');
+    const morgan = playWithBasicFocusFire(
+      'morgan-last-stand',
+      party,
+      yard.characterMovePp,
+    );
+    expect(morgan.battle.status).toBe('victory');
+  });
 
   it.each<EncounterId>(['shells-town', 'arlong-park'])('%s is a valid, winnable 4v4 encounter', (id) => {
     const definitions = getEncounterFighters(id);

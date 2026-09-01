@@ -3,6 +3,7 @@ import { getAvailableNodes } from '../run/storyContent';
 import type { RunSnapshot } from '../run/types';
 import {
   clearObsoleteRunStorage,
+  migrateRunState,
   obsoleteRunStorageKeys,
   runStorageKey,
   useRunStore,
@@ -23,6 +24,7 @@ describe('Story run store', () => {
     expect(run.activeArcId).toBe('romance-dawn');
     expect(run.currentNodeId).toBe('foosha-departure');
     expect(run.completedNodeIds).toEqual([]);
+    expect(run.visitedNodeIds).toEqual(['foosha-departure']);
     expect(run.berries).toBe(75);
     expect(run.hull).toBe(90);
     expect(run.rosterIds).toEqual(['luffy']);
@@ -59,6 +61,7 @@ describe('Story run store', () => {
 
     expect(useRunStore.getState().phase).toBe('map');
     expect(useRunStore.getState().currentNodeId).toBe('foosha-departure');
+    expect(useRunStore.getState().visitedNodeIds).toContain('alvida-deck');
     expect(useRunStore.getState().hull).toBe(80);
     expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id)).toEqual(['alvida-deck']);
   });
@@ -128,7 +131,7 @@ describe('Story run store', () => {
     expect(useRunStore.getState().bounty).toBe(1290);
   });
 
-  it('finishes the opening slice at Coby\'s persisted checkpoint', async () => {
+  it('persists Coby\'s checkpoint and opens the approved Shells Town continuation', async () => {
     reachBarrel();
     useRunStore.getState().resolveNode('rescue-coby-openly');
     useRunStore.getState().enterNode('alvida-deck');
@@ -138,7 +141,8 @@ describe('Story run store', () => {
 
     expect(useRunStore.getState().checkpointNodeId).toBe('cobys-resolve');
     expect(useRunStore.getState().guestIds).toEqual(['coby']);
-    expect(getAvailableNodes(useRunStore.getState())).toEqual([]);
+    expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id))
+      .toEqual(['shells-town-arrival']);
     const storage = useRunStore.persist.getOptions().storage!;
     const saved = await storage.getItem(runStorageKey);
     expect(saved?.state).toEqual(expect.objectContaining({
@@ -146,6 +150,98 @@ describe('Story run store', () => {
       checkpointNodeId: 'cobys-resolve',
       guestIds: ['coby'],
     }));
+  });
+
+  it('locks the Shells Town route and applies its distinct approved rewards', () => {
+    reachShellsTown();
+    expect(useRunStore.getState().resolveNode('help-rika-openly')).toBe(true);
+    expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id)).toEqual(['marine-yard']);
+    expect(useRunStore.getState().enterNode('execution-grounds')).toBe(false);
+    expect(useRunStore.getState().enterNode('marine-yard')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().berries).toBe(220);
+    expect(useRunStore.getState().bounty).toBe(2970);
+
+    reachShellsTown();
+    expect(useRunStore.getState().resolveNode('gather-information-quietly')).toBe(true);
+    expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id))
+      .toEqual(['execution-grounds']);
+    expect(useRunStore.getState().enterNode('marine-yard')).toBe(false);
+    expect(useRunStore.getState().enterNode('execution-grounds')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().berries).toBe(190);
+    expect(useRunStore.getState().bounty).toBe(2310);
+  });
+
+  it('reconverges at Zoro, recruits him permanently, and leaves lineup control to the player', () => {
+    reachZoro('help-rika-openly');
+    expect(useRunStore.getState().resolveNode('return-zoros-swords')).toBe(true);
+
+    const run = useRunStore.getState();
+    expect(run.rosterIds).toEqual(['luffy', 'zoro']);
+    expect(run.guestIds).toEqual(['coby']);
+    expect(run.activePartyIds).toEqual(['luffy']);
+    expect(run.roleAssignments['fighter-1']).toBe('zoro');
+    expect(getAvailableNodes(run).map((node) => node.id)).toEqual(['morgan-last-stand']);
+  });
+
+  it('awards the Morgan climax and persists Coby\'s farewell arc pack', async () => {
+    reachZoro('gather-information-quietly');
+    useRunStore.getState().resolveNode('return-zoros-swords');
+    useRunStore.getState().addActiveMember('zoro');
+    useRunStore.getState().addActiveMember('coby');
+    useRunStore.getState().enterNode('morgan-last-stand');
+    useRunStore.getState().resolveBattle('victory');
+
+    expect(useRunStore.getState().berries).toBe(290);
+    expect(useRunStore.getState().bounty).toBe(5610);
+    expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id))
+      .toEqual(['marines-farewell']);
+    useRunStore.getState().enterNode('marines-farewell');
+    expect(useRunStore.getState().resolveNode('honor-cobys-farewell')).toBe(true);
+
+    const run = useRunStore.getState();
+    expect(run.phase).toBe('node');
+    expect(run.checkpointNodeId).toBe('marines-farewell');
+    expect(run.guestIds).toEqual([]);
+    expect(run.activePartyIds).toEqual(['luffy', 'zoro']);
+    expect(run.pendingPack).toEqual(expect.objectContaining({
+      packId: 'romance-dawn',
+      source: 'arc-reward',
+      resume: {
+        phase: 'map',
+        activeArcId: 'orange-town',
+        currentNodeId: 'orange-town-harbor',
+      },
+    }));
+    const storage = useRunStore.persist.getOptions().storage!;
+    const saved = await storage.getItem(runStorageKey);
+    expect((saved?.state as RunSnapshot | undefined)?.pendingPack?.packId).toBe('romance-dawn');
+  });
+
+  it('transitions to the separate Orange Town map only after one arc card is kept', () => {
+    reachZoro('help-rika-openly');
+    useRunStore.getState().resolveNode('return-zoros-swords');
+    useRunStore.getState().enterNode('morgan-last-stand');
+    useRunStore.getState().resolveBattle('victory');
+    useRunStore.getState().enterNode('marines-farewell');
+    useRunStore.getState().resolveNode('honor-cobys-farewell');
+
+    const pack = useRunStore.getState().pendingPack!;
+    expect(useRunStore.getState().activeArcId).toBe('romance-dawn');
+    for (const card of pack.cards) useRunStore.getState().revealPackCard(card.cardId);
+    expect(useRunStore.getState().claimPackCard(pack.cards[0].cardId)).toBe(true);
+
+    const run = useRunStore.getState();
+    expect(run).toEqual(expect.objectContaining({
+      phase: 'map',
+      activeArcId: 'orange-town',
+      currentNodeId: 'orange-town-harbor',
+      visitedNodeIds: expect.arrayContaining(['marines-farewell', 'orange-town-harbor']),
+      pendingPack: null,
+      crewAssignmentWindow: 'card-pull',
+    }));
+    expect(getAvailableNodes(run).map((node) => node.id)).toEqual(['orange-town-harbor']);
   });
 
   it('uses a clean dev-build save and removes obsolete alpha storage', () => {
@@ -160,6 +256,20 @@ describe('Story run store', () => {
     expect(obsoleteRunStorageKeys).toContain('uopa-story-dev-v2');
     expect(obsoleteRunStorageKeys).toContain('uopa-story-dev-v3');
     expect(obsoleteRunStorageKeys).not.toContain(runStorageKey);
+  });
+
+  it('migrates version-1 saves with completed and current nodes revealed', () => {
+    useRunStore.getState().startRun();
+    const current = useRunStore.getState();
+    const { visitedNodeIds: _visitedNodeIds, ...versionOne } = current;
+    const migrated = migrateRunState({
+      ...versionOne,
+      completedNodeIds: ['foosha-departure', 'barrel-at-sea'],
+      currentNodeId: 'alvida-deck',
+    }, 1);
+
+    expect(migrated.visitedNodeIds)
+      .toEqual(['foosha-departure', 'barrel-at-sea', 'alvida-deck']);
   });
 
   it('allows unrestricted one-to-four fighter parties from permanent and guest characters', () => {
@@ -393,4 +503,23 @@ function reachBarrel(fooshaChoice = 'pack-provisions'): void {
   useRunStore.getState().startRun();
   expect(useRunStore.getState().resolveNode(fooshaChoice)).toBe(true);
   expect(useRunStore.getState().enterNode('barrel-at-sea')).toBe(true);
+}
+
+function reachShellsTown(): void {
+  reachBarrel();
+  expect(useRunStore.getState().resolveNode('rescue-coby-openly')).toBe(true);
+  expect(useRunStore.getState().enterNode('alvida-deck')).toBe(true);
+  useRunStore.getState().resolveBattle('victory');
+  expect(useRunStore.getState().enterNode('cobys-resolve')).toBe(true);
+  expect(useRunStore.getState().resolveNode('support-cobys-dream')).toBe(true);
+  expect(useRunStore.getState().enterNode('shells-town-arrival')).toBe(true);
+}
+
+function reachZoro(shellsChoice: 'help-rika-openly' | 'gather-information-quietly'): void {
+  reachShellsTown();
+  expect(useRunStore.getState().resolveNode(shellsChoice)).toBe(true);
+  const encounterId = shellsChoice === 'help-rika-openly' ? 'marine-yard' : 'execution-grounds';
+  expect(useRunStore.getState().enterNode(encounterId)).toBe(true);
+  useRunStore.getState().resolveBattle('victory');
+  expect(useRunStore.getState().enterNode('free-pirate-hunter')).toBe(true);
 }

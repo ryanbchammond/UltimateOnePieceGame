@@ -29,17 +29,24 @@ Landlubber difficulty:
 - Challenge Alvida openly for higher rewards or infiltrate her hold for a smaller encounter
 - Choose between recovering 40 Berries of supplies and freeing captives for 300 bounty
 - Fight Alvida with either three enemies on the direct route or two on the infiltration route
-- Complete the current slice at Coby's Resolve with a persisted checkpoint
+- Continue from Coby's persisted checkpoint into Shells Town
+- Stand with Rika openly for a three-enemy Marine response and greater rewards, or let Coby gather
+  information for a smaller two-enemy encounter
+- Recruit Zoro permanently without forcing him into the active battle lineup
+- Defeat Morgan, Commander Ripper, and a Marine gunner in Morgan's Last Stand
+- Say farewell to Coby, set the Romance Dawn checkpoint, and open a free five-card arc pack
+- Reveal all five cards, keep exactly one, and transition to the separate Orange Town map boundary
 - Use any one to four currently available permanent or guest characters without locked story slots
 - Manage battle composition independently from the ten permanent ship-role assignments
 - Track Berries, bounty, hull, PP, checkpoints, outcome receipts, and the captain's journal
 - Resolve event routes, consequences, and battle rewards entirely from authored story data
-- Render only the active arc's nodes and routes on the Phaser map
+- Render only visited nodes and route segments from the active arc on the Phaser map; reachable but
+  unvisited destinations remain selectable through the navigation panel
 - Automatically persist the current run in browser local storage under a clean development save
 
 The five-card keep-one system, six rarities, shards, star upgrades, role effects, artifacts, and the
-legacy East Blue prototype remain implemented and covered as reusable foundations. The active
-Romance Dawn slice ends before its first Tavern or free arc pack.
+legacy East Blue prototype remain implemented and covered as reusable foundations. Orange Town's
+playable story content remains the next milestone after the full Romance Dawn playtest.
 
 Enemy turns resolve automatically. On a crew turn, select a living enemy card and then choose one
 of the acting fighter's four moves. Guards and self-buffs automatically target the acting fighter;
@@ -49,7 +56,9 @@ Story Mode uses hybrid recruitment: major story recruits are guaranteed, while o
 packs provide additional characters. The implemented legacy Baratie pack contains five cards, guarantees one
 Rare-or-higher slot, and uses provisional 60% Common, 35% Rare, and 5% Legendary odds per normal
 slot. Featured characters receive 3x selection weight within their rarity. The full rarity model
-also supports Uncommon, Epic, and Mythical.
+also supports Uncommon, Epic, and Mythical. The free Romance Dawn pack uses 48% Common, 20%
+Uncommon, 25% Rare, 6% Epic, and 1% Legendary odds, with Coby, Helmeppo, Alvida, and Morgan featured
+at 3x weight within their rarity.
 Future Free-Roam and Chaos modes will use pack-driven recruitment.
 
 Implemented combat rules:

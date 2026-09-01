@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import {
   getStoryArc,
   getStoryConnectionsForArc,
-  getStoryNodesForArc,
+  getVisitedStoryNodesForArc,
   isNodeAvailable,
   isNodeCompleted,
 } from '../run/storyContent';
@@ -57,8 +57,10 @@ export class MapScene extends Phaser.Scene {
     }
 
     const activeArc = getStoryArc(run.activeArcId);
-    const arcNodes = getStoryNodesForArc(run.activeArcId);
-    const arcConnections = getStoryConnectionsForArc(run.activeArcId);
+    const arcNodes = getVisitedStoryNodesForArc(run);
+    const visibleNodeIds = new Set(arcNodes.map((node) => node.id));
+    const arcConnections = getStoryConnectionsForArc(run.activeArcId)
+      .filter(([fromId, toId]) => visibleNodeIds.has(fromId) && visibleNodeIds.has(toId));
     this.add
       .text(42, 30, activeArc?.mapTitle ?? 'STORY ROUTE', {
         color: '#f7d774',
