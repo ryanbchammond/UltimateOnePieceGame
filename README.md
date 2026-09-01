@@ -72,7 +72,7 @@ Implemented combat rules:
 
 - Every living fighter acts once per round in descending Speed order
 - Damage is `Move Power + Attack - Defense`, with a minimum of 1
-- All damaging moves use the twelve-type directional chart in `combat_chart.md`
+- All damaging moves use the implemented twelve-type directional matchup chart
 - Fighters support one to three defensive types. Matchups multiply and clamp to 0.25×–4× before
   the Devil Fruit Water override; current legacy fighters retain their existing single type
 - Magic represents Haki, Light, Darkness, Gravity, and other otherwise-unclassified powers
@@ -111,4 +111,3 @@ npm run build
 
 - `apps/client` — React UI, Phaser rendering, and Zustand game state
 - `apps/server` — Express API and PostgreSQL connection foundation
-- `game_plan.md` — game design document and development guidance
