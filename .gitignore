@@ -5,3 +5,11 @@ dist/
 !.env.example
 *.log
 .DS_Store
+
+# Local-only development material
+/Handoffs/
+/reviews/
+/game_plan.md
+/development_plan.md
+/continuation_spec.md
+/combat_chart.md
