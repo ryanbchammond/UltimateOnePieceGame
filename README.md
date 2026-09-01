@@ -18,6 +18,8 @@ npm run dev
 The client runs at `http://localhost:5173`. The server health endpoint is available at
 `http://localhost:3001/api/health`.
 
+Demo at `https://ryanbchammond.github.io/UltimateOnePieceGame/`
+
 ## Playable campaign
 
 The active build contains the completed **Romance Dawn** arc and the first playable **Orange Town**
