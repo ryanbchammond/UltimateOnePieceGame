@@ -58,9 +58,12 @@ The five-card keep-one system, six rarities, shards, star upgrades, role effects
 legacy East Blue prototype remain implemented and covered as reusable foundations. Romance Dawn
 and Orange Town now form the complete two-arc Story Mode vertical slice.
 
-Enemy turns resolve automatically. On a crew turn, select a living enemy card and then choose one
-of the acting fighter's four moves. Guards and self-buffs automatically target the acting fighter;
-attacks and debuffs use the selected enemy.
+Enemy turns resolve automatically. On a crew turn, click or tap a living enemy on the battlefield,
+or use the synchronized keyboard-accessible target list, then choose one of the acting fighter's
+four moves below the battlefield. Guards and self-buffs automatically target the acting fighter;
+attacks and debuffs use the selected enemy. Remaining initiative appears above the battlefield,
+while the battle log, selected-target guidance, and full type guide sit beside it on desktop and
+stack below it on smaller screens.
 
 Story Mode uses hybrid recruitment: major story recruits are guaranteed, while optional Tavern
 packs provide additional characters. The implemented legacy Baratie pack contains five cards, guarantees one

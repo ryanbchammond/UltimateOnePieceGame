@@ -123,18 +123,16 @@ export function App() {
             </>
           ) : runPhase === 'battle' ? (
             encounterLoaded ? (
-              <section className="play-workspace battle-workspace">
-                <section className="game-frame" aria-label="Battlefield">
-                  <PhaserCanvas view="battle" />
-                </section>
-                <div className="workspace-context">
-                  <BattleHud
-                    onDefeat={() => resolveBattle('defeat')}
-                    onVictory={() => resolveBattle('victory')}
-                    revealBattleIq={revealBattleIq}
-                  />
-                </div>
-              </section>
+              <BattleHud
+                battlefield={(
+                  <section className="game-frame battle-frame" aria-label="Battlefield">
+                    <PhaserCanvas view="battle" />
+                  </section>
+                )}
+                onDefeat={() => resolveBattle('defeat')}
+                onVictory={() => resolveBattle('victory')}
+                revealBattleIq={revealBattleIq}
+              />
             ) : (
               <BattlePreparation onStart={beginEncounter} />
             )

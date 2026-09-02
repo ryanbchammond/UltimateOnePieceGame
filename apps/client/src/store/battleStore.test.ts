@@ -32,6 +32,29 @@ describe('battle store', () => {
     expect(state.selectedTargetId).toBe('arlong');
   });
 
+  it('selects only living enemies through the shared battlefield target action', () => {
+    const initial = createDemoBattle();
+    const battle = {
+      ...initial,
+      fighters: initial.fighters.map((fighter) =>
+        fighter.id === 'kuro' ? { ...fighter, hp: 0 } : fighter,
+      ),
+    };
+    useBattleStore.setState({ battle, selectedTargetId: 'arlong' });
+
+    useBattleStore.getState().selectTarget('smoker');
+    expect(useBattleStore.getState().selectedTargetId).toBe('smoker');
+
+    useBattleStore.getState().selectTarget('kuro');
+    expect(useBattleStore.getState().selectedTargetId).toBe('smoker');
+
+    useBattleStore.getState().selectTarget('luffy');
+    expect(useBattleStore.getState().selectedTargetId).toBe('smoker');
+
+    useBattleStore.getState().selectTarget('missing');
+    expect(useBattleStore.getState().selectedTargetId).toBe('smoker');
+  });
+
   it('falls back after a multi-target move defeats the selected enemy', () => {
     const initial = createDemoBattle();
     const battle = {

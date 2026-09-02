@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import {
   desperateStrike,
   getEffectiveMoveElement,
@@ -7,8 +7,10 @@ import {
   getUsableMoves,
 } from '../combat/engine';
 import {
+  describeMultiplier,
   elementLabels,
   elementOrder,
+  getTypeMultiplier,
   typeEffectiveness,
 } from '../combat/typeEffectiveness';
 import type { Fighter, Move } from '../combat/types';
@@ -17,63 +19,9 @@ import { useBattleStore } from '../store/battleStore';
 function HpBar({ fighter }: { fighter: Fighter }) {
   const percentage = Math.max(0, (fighter.hp / fighter.maxHp) * 100);
   return (
-    <div className="hp-track" aria-label={`${fighter.hp} of ${fighter.maxHp} health`}>
+    <div className="hp-track" aria-hidden="true">
       <span style={{ width: `${percentage}%` }} />
     </div>
-  );
-}
-
-function FighterCard({
-  fighter,
-  targetable,
-  revealBattleIq,
-}: {
-  fighter: Fighter;
-  targetable: boolean;
-  revealBattleIq: boolean;
-}) {
-  const selectedTargetId = useBattleStore((state) => state.selectedTargetId);
-  const selectTarget = useBattleStore((state) => state.selectTarget);
-  const defeated = fighter.hp === 0;
-  const className = [
-    'fighter-card',
-    selectedTargetId === fighter.id ? 'selected' : '',
-    defeated ? 'defeated' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  return (
-    <button
-      className={className}
-      disabled={!targetable || defeated}
-      onClick={() => selectTarget(fighter.id)}
-      type="button"
-    >
-      <span className="fighter-name">{fighter.name}</span>
-      <span className="fighter-element">
-        {fighter.types.map((type) => elementLabels[type]).join(' · ')}
-        {fighter.devilFruitUser ? ' · Devil Fruit' : ''}
-        {revealBattleIq && fighter.side === 'enemy' && fighter.battleIq !== undefined
-          ? ` · Battle IQ ${fighter.battleIq}`
-          : ''}
-      </span>
-      <HpBar fighter={fighter} />
-      <span className="hp-value">
-        {fighter.hp}/{fighter.maxHp} HP
-      </span>
-      {fighter.activeEffects.length > 0 && (
-        <span className="fighter-effects" aria-label="Active combat effects">
-          {fighter.activeEffects.map((effect) => (
-            <span key={`${effect.effect}-${effect.name}`}>
-              {effect.effect === 'guard'
-                ? `Guard ${effect.damageReductionPercent}%`
-                : `${effect.stat === 'attack' ? 'ATK' : 'DEF'} ${effect.modifierPercent > 0 ? '+' : ''}${effect.modifierPercent}% · ${effect.remainingRounds}r${effect.damageTypeOverride ? ` · ${elementLabels[effect.damageTypeOverride]} attacks` : ''}`}
-            </span>
-          ))}
-        </span>
-      )}
-    </button>
   );
 }
 
@@ -96,15 +44,19 @@ function describeMove(move: Move, fighter?: Fighter): string {
   return `${move.target} · ${amount} · ${move.durationRounds} rounds${move.damageTypeOverride ? ` · attacks become ${elementLabels[move.damageTypeOverride]}` : ''}`;
 }
 
+function fighterTypeLabel(fighter: Fighter): string {
+  return fighter.types.map((type) => elementLabels[type]).join(' · ');
+}
+
 function TypeGuide() {
   return (
     <details className="type-guide">
-      <summary>Type effectiveness guide</summary>
+      <summary>Full type guide</summary>
       <p>
-        Each row is an attacking type. Defenders may have up to three types; their matchups multiply
-        and are capped between 0.25× and 4× before Devil Fruit rules. Water attacks deal at least 4× damage to Devil Fruit users,
-        rising to 4.5× or 5× when their type is already weak to Water. Magic covers Haki, Light,
-        Darkness, Gravity, and other powers outside the remaining eleven types.
+        Each row is an attacking type. Defender matchups multiply and cap between 0.25× and 4×
+        before Devil Fruit rules. Water attacks deal Devil Fruit users at least 4× damage, rising
+        to 4.5× or 5× when their type is already weak to Water. Magic covers Haki and otherwise
+        unclassified powers.
       </p>
       <div className="type-guide-grid">
         {elementOrder.map((attackType) => {
@@ -131,14 +83,111 @@ function TypeGuide() {
   );
 }
 
+function TargetSelector({
+  enemies,
+  isPlayerTurn,
+  selectedTargetId,
+}: {
+  enemies: Fighter[];
+  isPlayerTurn: boolean;
+  selectedTargetId: string;
+}) {
+  const selectTarget = useBattleStore((state) => state.selectTarget);
+
+  return (
+    <section className="target-selector" aria-labelledby="target-selector-heading">
+      <div className="sidebar-heading">
+        <p className="panel-label" id="target-selector-heading">Target</p>
+        <small>{isPlayerTurn ? 'Select here or on the battlefield' : 'Locked during enemy turn'}</small>
+      </div>
+      <div className="target-list">
+        {enemies.map((fighter) => {
+          const defeated = fighter.hp === 0;
+          const selected = selectedTargetId === fighter.id && !defeated;
+          return (
+            <button
+              aria-label={`${fighter.name}, ${fighter.hp} of ${fighter.maxHp} HP, ${fighterTypeLabel(fighter)}${fighter.devilFruitUser ? ', Devil Fruit user' : ''}`}
+              aria-pressed={selected}
+              className={selected ? 'selected' : ''}
+              disabled={!isPlayerTurn || defeated}
+              key={fighter.id}
+              onClick={() => selectTarget(fighter.id)}
+              type="button"
+            >
+              <span>
+                <strong>{fighter.name}</strong>
+                <b>{defeated ? 'KO' : `${fighter.hp}/${fighter.maxHp}`}</b>
+              </span>
+              <HpBar fighter={fighter} />
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ContextualTips({ current, target }: { current: Fighter | null; target?: Fighter }) {
+  const tips: string[] = [];
+
+  if (!current) {
+    tips.push('The battle is resolved. Continue to claim the outcome.');
+  } else if (current.side === 'enemy') {
+    tips.push(`${current.name} is choosing an action. The initiative strip shows who acts next.`);
+  } else if (!target) {
+    tips.push('Choose a living enemy on the battlefield or in the accessible target list.');
+  } else {
+    const damagingMoves = getUsableMoves(current).filter(
+      (move) => move.effect === 'damage' || move.effect === 'multi-target',
+    );
+    const rankedMoves = damagingMoves
+      .map((move) => {
+        const effectiveType = getEffectiveMoveElement(current, move);
+        return {
+          move,
+          multiplier: getTypeMultiplier(effectiveType, target.types, target.devilFruitUser),
+        };
+      })
+      .sort((left, right) => right.multiplier - left.multiplier);
+    const best = rankedMoves[0];
+
+    tips.push(`Current target: ${target.name} · ${fighterTypeLabel(target)}${target.devilFruitUser ? ' · Devil Fruit' : ''}.`);
+    if (best) {
+      tips.push(`${best.move.name} is ${describeMultiplier(best.multiplier).toLowerCase()} against this target.`);
+    }
+    if (target.activeEffects.some((effect) => effect.effect === 'guard')) {
+      tips.push(`${target.name} is guarding and will reduce incoming damage.`);
+    }
+    if (current.moves.every((move) => getRemainingPp(current, move) === 0)) {
+      tips.push('All authored moves are depleted. Desperate Strike remains available.');
+    }
+  }
+
+  return (
+    <section className="battle-tips" aria-labelledby="battle-tips-heading">
+      <p className="panel-label" id="battle-tips-heading">Combat tips</p>
+      <ul>
+        {tips.map((tip) => <li key={tip}>{tip}</li>)}
+      </ul>
+    </section>
+  );
+}
+
 interface BattleHudProps {
+  battlefield: ReactNode;
   onVictory?: () => void;
   onDefeat?: () => void;
   revealBattleIq?: boolean;
 }
 
-export function BattleHud({ onVictory, onDefeat, revealBattleIq = false }: BattleHudProps) {
+export function BattleHud({
+  battlefield,
+  onVictory,
+  onDefeat,
+  revealBattleIq = false,
+}: BattleHudProps) {
   const battle = useBattleStore((state) => state.battle);
+  const selectedTargetId = useBattleStore((state) => state.selectedTargetId);
   const useMove = useBattleStore((state) => state.useMove);
   const takeEnemyTurn = useBattleStore((state) => state.takeEnemyTurn);
   const restart = useBattleStore((state) => state.restart);
@@ -148,6 +197,14 @@ export function BattleHud({ onVictory, onDefeat, revealBattleIq = false }: Battl
   const allAuthoredMovesDepleted = current
     ? current.moves.every((move) => getRemainingPp(current, move) === 0)
     : false;
+  const enemies = battle.fighters.filter((fighter) => fighter.side === 'enemy');
+  const selectedTarget = enemies.find(
+    (fighter) => fighter.id === selectedTargetId && fighter.hp > 0,
+  );
+  const remainingTurns = battle.turnOrder.slice(battle.turnIndex).map((id) =>
+    battle.fighters.find((fighter) => fighter.id === id),
+  );
+
   const finishBattle = () => {
     if (battle.status === 'victory' && onVictory) {
       onVictory();
@@ -164,93 +221,78 @@ export function BattleHud({ onVictory, onDefeat, revealBattleIq = false }: Battl
     return () => window.clearTimeout(timer);
   }, [battle.round, battle.status, battle.turnIndex, current?.id, takeEnemyTurn]);
 
-  const playerCrew = battle.fighters.filter((fighter) => fighter.side === 'player');
-  const enemies = battle.fighters.filter((fighter) => fighter.side === 'enemy');
-  const remainingTurns = battle.turnOrder.slice(battle.turnIndex).map((id) =>
-    battle.fighters.find((fighter) => fighter.id === id),
-  );
-
   return (
     <section className="battle-hud" aria-label="Combat controls">
-      <div className="initiative-bar">
-        <span className="round-label">Round {battle.round}</span>
-        <div className="turn-order" aria-label="Remaining initiative order">
-          {remainingTurns.map(
-            (fighter, index) =>
-              fighter &&
-              fighter.hp > 0 && (
-                <span className={index === 0 ? 'current' : ''} key={fighter.id}>
+      <div className="battle-main-column">
+        <div className="initiative-bar">
+          <span className="round-label">Round {battle.round}</span>
+          <div className="turn-order" aria-label="Remaining initiative order">
+            {remainingTurns.map(
+              (fighter, index) => fighter && fighter.hp > 0 && (
+                <span
+                  className={`${index === 0 ? 'current' : ''} ${fighter.side}`}
+                  key={fighter.id}
+                >
                   {fighter.name}
                 </span>
               ),
-          )}
-        </div>
-      </div>
-
-      {battle.lastAction && (
-        <div className={`action-callout ${battle.lastAction.side}`} aria-live="assertive">
-          <span>{battle.lastAction.actorName}</span>
-          <strong>{battle.lastAction.moveName}</strong>
-          <small>Target: {battle.lastAction.targetNames.join(', ')}</small>
-        </div>
-      )}
-
-      <div className="crew-panels">
-        <div className="crew-panel">
-          <p className="panel-label">Straw Hat crew</p>
-          <div className="fighter-grid">
-            {playerCrew.map((fighter) => (
-              <FighterCard
-                fighter={fighter}
-                key={fighter.id}
-                revealBattleIq={false}
-                targetable={false}
-              />
-            ))}
+            )}
           </div>
         </div>
 
-        <div className="turn-panel">
+        {battlefield}
+
+        <section className="move-tray" aria-labelledby="move-tray-heading">
           {battle.status === 'active' && current ? (
             <>
-              <p className="panel-label">Current turn</p>
-              <h2>{current.name}</h2>
-              {isPlayerTurn ? (
-                <>
-                  <p className="turn-prompt">
-                    Choose an enemy for attacks or debuffs. Self moves target {current.name}.
-                  </p>
-                  <div className="move-list">
-                    {current.moves.map((move) => (
+              <div className="move-tray-heading">
+                <div>
+                  <p className="panel-label" id="move-tray-heading">Current turn</p>
+                  <h2>{current.name}</h2>
+                </div>
+                <p>
+                  {isPlayerTurn
+                    ? selectedTarget
+                      ? `Targeting ${selectedTarget.name}`
+                      : 'Select a living enemy'
+                    : 'Enemy is choosing an action…'}
+                </p>
+              </div>
+              {isPlayerTurn && (
+                <div className="move-list">
+                  {current.moves.map((move) => {
+                    const remainingPp = getRemainingPp(current, move);
+                    return (
                       <button
-                        disabled={getRemainingPp(current, move) === 0}
+                        disabled={remainingPp === 0}
                         onClick={() => useMove(move.id)}
                         type="button"
                         key={move.id}
                       >
                         <span>
                           {move.name}
-                          <b>{getRemainingPp(current, move)}/{move.maxPp} PP</b>
+                          <b>{remainingPp}/{move.maxPp} PP</b>
                         </span>
                         <small>{describeMove(move, current)}</small>
+                        {remainingPp === 0 && <em>Depleted</em>}
                       </button>
-                    ))}
-                    {allAuthoredMovesDepleted && usableMoves[0]?.id === desperateStrike.id && (
-                      <button onClick={() => useMove(desperateStrike.id)} type="button">
-                        <span>{desperateStrike.name}<b>Emergency</b></span>
-                        <small>{describeMove(desperateStrike, current)}</small>
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="enemy-thinking">Enemy is choosing an attack…</p>
+                    );
+                  })}
+                  {allAuthoredMovesDepleted && usableMoves[0]?.id === desperateStrike.id && (
+                    <button onClick={() => useMove(desperateStrike.id)} type="button">
+                      <span>{desperateStrike.name}<b>Emergency</b></span>
+                      <small>{describeMove(desperateStrike, current)}</small>
+                    </button>
+                  )}
+                </div>
               )}
             </>
           ) : (
             <div className={`battle-result ${battle.status}`}>
-              <p className="panel-label">Battle complete</p>
-              <h2>{battle.status === 'victory' ? 'Victory!' : 'Crew defeated'}</h2>
+              <div>
+                <p className="panel-label" id="move-tray-heading">Battle complete</p>
+                <h2>{battle.status === 'victory' ? 'Victory!' : 'Crew defeated'}</h2>
+              </div>
               <button onClick={finishBattle} type="button">
                 {battle.status === 'victory' && onVictory
                   ? 'Claim rewards'
@@ -260,34 +302,46 @@ export function BattleHud({ onVictory, onDefeat, revealBattleIq = false }: Battl
               </button>
             </div>
           )}
-        </div>
+        </section>
+      </div>
 
-        <div className="crew-panel enemy-panel">
-          <p className="panel-label">Enemy crew · select target</p>
-          <div className="fighter-grid">
-            {enemies.map((fighter) => (
-              <FighterCard
-                fighter={fighter}
-                key={fighter.id}
-                revealBattleIq={revealBattleIq}
-                targetable={isPlayerTurn}
-              />
-            ))}
+      <aside className="combat-sidebar" aria-label="Combat information">
+        <TargetSelector
+          enemies={enemies}
+          isPlayerTurn={Boolean(isPlayerTurn)}
+          selectedTargetId={selectedTargetId}
+        />
+
+        {battle.lastAction && (
+          <div className={`action-callout ${battle.lastAction.side}`} aria-live="assertive">
+            <span>{battle.lastAction.actorName}</span>
+            <strong>{battle.lastAction.moveName}</strong>
+            <small>Target: {battle.lastAction.targetNames.join(', ')}</small>
           </div>
-        </div>
-      </div>
+        )}
 
-      <div className="battle-log" aria-live="polite">
-        <p className="panel-label">Battle log</p>
-        <ol>
-          {battle.log.slice(-5).map((entry) => (
-            <li className={entry.tone} key={entry.id}>
-              {entry.message}
-            </li>
-          ))}
-        </ol>
-      </div>
-      <TypeGuide />
+        <div className="battle-log" role="log" aria-live="polite" aria-relevant="additions">
+          <div className="sidebar-heading">
+            <p className="panel-label">Battle log</p>
+            <small>{battle.log.length} recent events</small>
+          </div>
+          <ol>
+            {[...battle.log].reverse().map((entry) => (
+              <li className={entry.tone} key={entry.id}>
+                {entry.message}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <ContextualTips current={current} target={selectedTarget} />
+        {revealBattleIq && (
+          <p className="battle-iq-readout">
+            Enemy Battle IQ: {enemies.map((enemy) => `${enemy.name} ${enemy.battleIq}`).join(' · ')}
+          </p>
+        )}
+        <TypeGuide />
+      </aside>
     </section>
   );
 }
