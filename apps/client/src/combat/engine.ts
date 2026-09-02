@@ -47,6 +47,12 @@ function assertValidMove(move: Move): void {
     if (!Number.isFinite(move.power) || move.power <= 0) {
       throw new Error(`${move.name} requires a positive damage power.`);
     }
+    if (
+      move.effect === 'multi-target' &&
+      (!Number.isInteger(move.maxTargets) || move.maxTargets < 1 || move.maxTargets > 4)
+    ) {
+      throw new Error(`${move.name} requires a target cap from one to four.`);
+    }
     return;
   }
 
@@ -301,6 +307,19 @@ function getEnemyTarget(state: BattleState, actor: Fighter, targetId: string): F
   return target;
 }
 
+function getCappedMultiTargets(
+  state: BattleState,
+  actor: Fighter,
+  move: Extract<Move, { effect: 'multi-target' }>,
+  primaryTargetId: string,
+): Fighter[] {
+  const primary = getEnemyTarget(state, actor, primaryTargetId);
+  return [
+    primary,
+    ...getValidTargets(state, actor, move).filter((target) => target.id !== primary.id),
+  ].slice(0, move.maxTargets);
+}
+
 function applyStatEffect(
   state: BattleState,
   target: Fighter,
@@ -433,6 +452,16 @@ export function resolveAction(state: BattleState, action: BattleAction): BattleS
       `${actor.name} used ${move.name} and will reduce incoming damage by ${move.damageReductionPercent}% until their next action.`,
       'effect',
     );
+    next = {
+      ...next,
+      lastAction: {
+        actorId: actor.id,
+        actorName: actor.name,
+        moveName: move.name,
+        targetNames: [actor.name],
+        side: actor.side,
+      },
+    };
   } else if (move.effect === 'stat') {
     const target =
       move.target === 'self'
@@ -442,15 +471,44 @@ export function resolveAction(state: BattleState, action: BattleAction): BattleS
       throw new Error('That buff must target the acting fighter.');
     }
     next = applyStatEffect(next, target, move);
+    next = {
+      ...next,
+      lastAction: {
+        actorId: actor.id,
+        actorName: actor.name,
+        moveName: move.name,
+        targetNames: [target.name],
+        side: actor.side,
+      },
+    };
   } else if (move.effect === 'multi-target') {
-    getEnemyTarget(next, actingFighter, action.targetId);
-    const targets = getValidTargets(next, actingFighter, move);
+    const targets = getCappedMultiTargets(next, actingFighter, move, action.targetId);
     targets.forEach((target) => {
       next = applyDamage(next, actingFighter, target, move);
     });
+    next = {
+      ...next,
+      lastAction: {
+        actorId: actor.id,
+        actorName: actor.name,
+        moveName: move.name,
+        targetNames: targets.map((target) => target.name),
+        side: actor.side,
+      },
+    };
   } else {
     const target = getEnemyTarget(next, actingFighter, action.targetId);
     next = applyDamage(next, actingFighter, target, move);
+    next = {
+      ...next,
+      lastAction: {
+        actorId: actor.id,
+        actorName: actor.name,
+        moveName: move.name,
+        targetNames: [target.name],
+        side: actor.side,
+      },
+    };
   }
   return settleTurn(next);
 }
@@ -526,7 +584,7 @@ export function scoreEnemyAction(state: BattleState, action: BattleAction): numb
   const ppPenalty = ppConservationPenalty(actor, move);
   if (move.effect === 'damage' || move.effect === 'multi-target') {
     const targets = move.effect === 'multi-target'
-      ? getValidTargets(state, actor, move)
+      ? getCappedMultiTargets(state, actor, move, target.id)
       : [target];
     const outcome = targets.reduce(
       (total, candidate) => {

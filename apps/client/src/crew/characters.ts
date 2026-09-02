@@ -73,12 +73,19 @@ const debuff = (
   maxPp: 5,
 });
 
-const multiTarget = (id: string, name: string, element: Element, power: number): Move => ({
+const multiTarget = (
+  id: string,
+  name: string,
+  element: Element,
+  power: number,
+  maxTargets = 2,
+): Move => ({
   id,
   name,
   element,
   effect: 'multi-target',
   power,
+  maxTargets,
   maxPp: 3,
 });
 
@@ -238,7 +245,7 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
         damage('onigiri', 'Oni Giri', 'swordsman', 24),
         guard('two-sword-guard', 'Two-Sword Guard', 'swordsman'),
         buff('lions-song-setup', "Lion's Song Setup", 'swordsman', 'attack'),
-        multiTarget('tatsumaki', 'Tatsumaki', 'swordsman', 12),
+        multiTarget('tatsumaki', 'Tatsumaki', 'swordsman', 12, 3),
       ],
     },
   },
@@ -446,7 +453,7 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
         damage('chop-cannon', 'Chop-Chop Cannon', 'brawler', 18),
         guard('chop-escape', 'Chop-Chop Escape', 'sniper'),
         debuff('flashy-taunt', 'Flashy Taunt', 'sniper', 'attack'),
-        multiTarget('buggy-ball', 'Buggy Ball', 'fire', 12),
+        multiTarget('buggy-ball', 'Buggy Ball', 'fire', 12, 3),
       ],
     },
   },

@@ -126,7 +126,7 @@ describe('Story encounters', () => {
   });
 
   it.each<[EncounterId, string[]]>([
-    ['beast-tamers-street', ['mohji', 'richie', 'beast-pirate']],
+    ['beast-tamers-street', ['mohji', 'richie']],
     ['harbor-decoy', ['mohji', 'richie']],
     ['acrobat-rooftops', ['cabaji', 'acrobat-pirate-a', 'acrobat-pirate-b']],
   ])('%s has its approved lineup and is reliable with the reachable Orange Town crew', (
@@ -140,6 +140,16 @@ describe('Story encounters', () => {
     expect(() => createBattle(definitions)).not.toThrow();
     expect(playWithBasicFocusFire(id, ['luffy', 'zoro']).battle.status).toBe('victory');
     expect(playWithBasicFocusFire(id, ['luffy', 'zoro', 'nami']).battle.status).toBe('victory');
+  });
+
+  it('builds the four-officer Buggy climax and keeps it reliable with the reachable crew', () => {
+    const enemies = getEncounterFighters('buggys-big-top', ['luffy', 'zoro', 'nami'])
+      .filter((fighter) => fighter.side === 'enemy');
+    expect(enemies.map((fighter) => fighter.id)).toEqual(['buggy', 'cabaji', 'mohji', 'richie']);
+    expect(enemies.every((fighter) => fighter.moves.length === 4)).toBe(true);
+    expect(playWithBasicFocusFire('buggys-big-top', ['luffy', 'zoro']).battle.status).toBe('victory');
+    expect(playWithBasicFocusFire('buggys-big-top', ['luffy', 'zoro', 'nami']).battle.status)
+      .toBe('victory');
   });
 
   it.each<[EncounterId, EncounterId]>([

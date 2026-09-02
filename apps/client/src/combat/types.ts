@@ -48,6 +48,7 @@ export interface StatMove extends BaseMove {
 export interface MultiTargetMove extends BaseMove {
   effect: 'multi-target';
   power: number;
+  maxTargets: number;
 }
 
 export type Move = DamageMove | GuardMove | StatMove | MultiTargetMove;
@@ -112,4 +113,11 @@ export interface BattleState {
   winner: Side | null;
   log: BattleLogEntry[];
   nextLogId: number;
+  lastAction?: {
+    actorId: string;
+    actorName: string;
+    moveName: string;
+    targetNames: string[];
+    side: Side;
+  };
 }

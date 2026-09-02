@@ -28,7 +28,8 @@ export type EncounterId =
   | 'morgan-last-stand'
   | 'beast-tamers-street'
   | 'harbor-decoy'
-  | 'acrobat-rooftops';
+  | 'acrobat-rooftops'
+  | 'buggys-big-top';
 export type CharacterId =
   | 'luffy'
   | 'alvida'
@@ -64,7 +65,7 @@ export type ShipRole =
 
 export type RoleAssignments = Record<ShipRole, CharacterId | null>;
 export type CharacterMovePp = Partial<Record<CharacterId, Record<string, number>>>;
-export type CardPackId = 'baratie-east-blue' | 'romance-dawn';
+export type CardPackId = 'baratie-east-blue' | 'romance-dawn' | 'orange-town';
 
 export interface RewardChange {
   label: string;
@@ -137,6 +138,7 @@ export interface CardPackOpening {
   packId: CardPackId;
   packNumber: number;
   source: 'paid' | 'arc-reward';
+  stage?: 'sealed' | 'cards';
   cards: CardPullResult[];
   resume?: {
     phase: RunPhase;
@@ -172,6 +174,8 @@ export interface RunSnapshot {
   pendingPack: CardPackOpening | null;
   crewAssignmentWindow: 'card-pull' | null;
   latestReward: RewardReceipt | null;
+  rewardPending?: boolean;
+  rewardDestinationNodeId?: string | null;
 }
 
 export interface NodeChoice {

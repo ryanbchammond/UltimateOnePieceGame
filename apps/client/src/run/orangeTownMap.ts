@@ -4,7 +4,7 @@ export const orangeTownArc: StoryArc = {
   id: 'orange-town',
   name: 'Orange Town',
   mapTitle: 'ORANGE TOWN · STORY ROUTE',
-  mapInstruction: 'Break Buggy\'s hold on the town and reach the mayor\'s refuge.',
+  mapInstruction: 'Break Buggy\'s hold on the town and defeat him at the Big Top.',
   start: {
     nodeId: 'orange-town-harbor',
     phase: 'map',
@@ -35,6 +35,8 @@ export const orangeTownArc: StoryArc = {
     'harbor-decoy',
     'acrobat-rooftops',
     'mayors-resolve',
+    'buggys-big-top',
+    'maps-and-promises',
   ],
 };
 
@@ -69,7 +71,7 @@ export const orangeTownNodes: StoryNode[] = [
     name: "Beast Tamer's Street",
     subtitle: 'Stand beside Chouchou',
     description:
-      'Mohji brings Richie and a beast pirate straight to the shop. Defending it openly means facing the full raiding party.',
+      'Mohji and Richie charge straight for the shop at full strength. Defending it openly means facing the beast-tamer pair without the advantage of Nami\'s decoy.',
     type: 'battle',
     encounterId: 'beast-tamers-street',
     x: 410,
@@ -79,7 +81,7 @@ export const orangeTownNodes: StoryNode[] = [
     victory: {
       title: 'The shop still stands',
       detail: 'Mohji\'s full raiding party was driven from Chouchou\'s street.',
-      journalEntry: 'The crew stood beside Chouchou and defeated Mohji, Richie, and their beast pirate.',
+      journalEntry: 'The crew stood beside Chouchou and defeated Mohji and Richie at full strength.',
       consequences: [
         { type: 'resource', resource: 'berries', amount: 75 },
         { type: 'resource', resource: 'bounty', amount: 1200, captainBountyBonus: true },
@@ -146,6 +148,40 @@ export const orangeTownNodes: StoryNode[] = [
     prerequisites: ['beast-tamers-street', 'harbor-decoy', 'acrobat-rooftops'],
     prerequisiteMode: 'any',
   },
+  {
+    id: 'buggys-big-top',
+    arcId: 'orange-town',
+    name: "Buggy's Big Top",
+    subtitle: 'The clown captain makes his stand',
+    description:
+      'Buggy gathers Cabaji, Mohji, and Richie beneath the circus tent for one last cannon-lit confrontation. The crew must break his officers before the town can be free.',
+    type: 'boss',
+    encounterId: 'buggys-big-top',
+    x: 770,
+    y: 270,
+    prerequisites: ['mayors-resolve'],
+    victory: {
+      title: 'Buggy blasted out of town',
+      detail: 'The Big Top has fallen and Orange Town is free from Buggy\'s crew.',
+      journalEntry: 'Luffy and his allies defeated Buggy, Cabaji, Mohji, and Richie at the Big Top.',
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: 150 },
+        { type: 'resource', resource: 'bounty', amount: 4500, captainBountyBonus: true },
+      ],
+    },
+  },
+  {
+    id: 'maps-and-promises',
+    arcId: 'orange-town',
+    name: 'Maps and Promises',
+    subtitle: 'A navigator joins the voyage',
+    description:
+      'With Buggy defeated, Nami chooses to keep sailing with Luffy and Zoro. Orange Town offers one final cache of cards before the crew charts its next course.',
+    type: 'recruit',
+    x: 910,
+    y: 270,
+    prerequisites: ['buggys-big-top'],
+  },
 ];
 
 export const orangeTownConnections: Array<[string, string]> = [
@@ -156,6 +192,8 @@ export const orangeTownConnections: Array<[string, string]> = [
   ['beast-tamers-street', 'mayors-resolve'],
   ['harbor-decoy', 'mayors-resolve'],
   ['acrobat-rooftops', 'mayors-resolve'],
+  ['mayors-resolve', 'buggys-big-top'],
+  ['buggys-big-top', 'maps-and-promises'],
 ];
 
 const mayorRecovery = [
@@ -184,7 +222,7 @@ export const orangeTownChoices: Record<string, NodeChoice[]> = {
     {
       id: 'defend-chouchous-shop',
       label: 'Defend the shop openly',
-      detail: 'Face Mohji, Richie, and a beast pirate for 75 Berries and 1,200 base bounty.',
+      detail: 'Face Mohji and Richie at full strength for 75 Berries and 1,200 base bounty, at the highest PP cost.',
       consequences: [{ type: 'route', branch: 'orange-officer-route', nodeId: 'beast-tamers-street' }],
       outcome: {
         title: 'Stand with Chouchou',
@@ -195,7 +233,7 @@ export const orangeTownChoices: Record<string, NodeChoice[]> = {
     {
       id: 'set-harbor-decoy',
       label: 'Set Nami\'s harbor decoy',
-      detail: 'Face only Mohji and Richie for 110 Berries and 700 base bounty, but risk 8 hull damage from cannon fire.',
+      detail: 'Face a weakened Mohji and Richie for 110 Berries and 700 base bounty, but risk 8 hull damage from cannon fire.',
       consequences: [{ type: 'route', branch: 'orange-officer-route', nodeId: 'harbor-decoy' }],
       outcome: {
         title: 'The beast tamers take the bait',
@@ -206,7 +244,7 @@ export const orangeTownChoices: Record<string, NodeChoice[]> = {
     {
       id: 'follow-nami-rooftops',
       label: 'Follow Nami over the rooftops',
-      detail: 'Face Cabaji and two acrobats for 50 Berries and 900 base bounty.',
+      detail: 'Face Cabaji and two acrobats for 50 Berries and 900 base bounty; control effects can increase the PP cost.',
       consequences: [{ type: 'route', branch: 'orange-officer-route', nodeId: 'acrobat-rooftops' }],
       outcome: {
         title: 'Take the high route',
@@ -259,6 +297,32 @@ export const orangeTownChoices: Record<string, NodeChoice[]> = {
         title: 'Supplies secured first',
         detail: 'The crew is well stocked, though word spreads that the town came second.',
         journalEntry: 'The crew prioritized Buggy\'s supplies over Orange Town\'s evacuation.',
+      },
+    },
+  ],
+  'maps-and-promises': [
+    {
+      id: 'welcome-nami-aboard',
+      label: 'Welcome Nami aboard',
+      detail: 'Recruit Nami permanently, set the final checkpoint, and open the free Orange Town pack.',
+      consequences: [
+        { type: 'guest', action: 'remove', characterId: 'nami' },
+        { type: 'recruit', characterId: 'nami', preferredRoles: ['navigator'] },
+        { type: 'checkpoint' },
+        {
+          type: 'pack',
+          packId: 'orange-town',
+          resume: {
+            phase: 'victory',
+            activeArcId: 'orange-town',
+            currentNodeId: 'maps-and-promises',
+          },
+        },
+      ],
+      outcome: {
+        title: 'Orange Town complete',
+        detail: 'Nami joins the permanent crew and the final arc pack is ready to open.',
+        journalEntry: 'Nami joined the crew as its navigator after Buggy\'s defeat.',
       },
     },
   ],

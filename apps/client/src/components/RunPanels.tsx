@@ -164,6 +164,60 @@ export function RewardReceiptPanel() {
   );
 }
 
+function rewardSymbol(label: string): string {
+  if (label === 'Berries') return '฿';
+  if (label === 'Bounty') return '★';
+  if (label === 'Hull') return '◆';
+  if (label === 'Move PP') return '⚡';
+  if (label === 'Roster' || label === 'Story guest') return '☠';
+  if (label === 'Card pack' || label === 'Shard') return '✦';
+  if (label === 'Checkpoint') return '⚑';
+  return '•';
+}
+
+export function RewardOutcomeScreen() {
+  const receipt = useRunStore((state) => state.latestReward);
+  const destinationId = useRunStore((state) => state.rewardDestinationNodeId);
+  const acknowledgeReward = useRunStore((state) => state.acknowledgeReward);
+  const destination = getStoryNode(destinationId ?? null);
+  if (!receipt) return null;
+
+  return (
+    <section className="reward-screen" aria-live="polite" aria-labelledby="reward-title">
+      <div className="reward-screen-heading">
+        <p className="eyebrow">Voyage outcome</p>
+        <h2 id="reward-title">{receipt.title}</h2>
+        <p>{receipt.detail}</p>
+      </div>
+      <div className="reward-icon-grid">
+        {receipt.changes.length > 0 ? receipt.changes.map((change, index) => (
+          <article className={change.tone} key={`${receipt.id}-${change.label}-${index}`}>
+            <span className="reward-icon" aria-hidden="true">{rewardSymbol(change.label)}</span>
+            <small>{change.label}</small>
+            <strong>{change.value}</strong>
+          </article>
+        )) : (
+          <article className="neutral">
+            <span className="reward-icon" aria-hidden="true">✓</span>
+            <small>Story</small>
+            <strong>Updated</strong>
+          </article>
+        )}
+      </div>
+      <div className="reward-actions">
+        <button className="primary-action" onClick={() => acknowledgeReward(true)} type="button">
+          {destination ? `Continue to ${destination.name}` : 'Continue voyage'}
+        </button>
+        {destination && (
+          <button className="text-action" onClick={() => acknowledgeReward(false)} type="button">
+            Review map first
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function VoyagePanel() {
   const run = useRunStore();
   const enterNode = useRunStore((state) => state.enterNode);
@@ -238,7 +292,7 @@ export function NodePanel() {
       <p className="eyebrow">{nodeTypeLabel(node)}</p>
       <h2>{node.name}</h2>
       <p>{node.description}</p>
-      {(nodeOffersService(node.id, 'tavern') || pendingPack) && <TavernPanel />}
+      {nodeOffersService(node.id, 'tavern') && <TavernPanel />}
       <div className="choice-list">
         {choices.map((choice) => {
           const berryCost = getChoiceBerryCost(choice);
@@ -252,13 +306,14 @@ export function NodePanel() {
           const hullDamage = getChoiceHullDamage(run, choice);
           return (
             <button
+              className={choices.length === 1 ? 'narrative-continue' : undefined}
               disabled={unaffordable || missingRole || Boolean(pendingPack)}
               onClick={() => resolveNode(choice.id)}
               type="button"
               key={choice.id}
             >
-              <strong>{choice.label}</strong>
-              <small>{choice.detail}</small>
+              <strong>{choices.length === 1 ? 'Continue' : choice.label}</strong>
+              <small>{choices.length === 1 ? `${choice.label} · ${choice.detail}` : choice.detail}</small>
               {roleLevels.map(({ role, level }) => (
                 <span className={`role-check ${level}`} key={role}>
                   {level === 'inactive'
@@ -274,7 +329,10 @@ export function NodePanel() {
   );
 }
 
-export function CrewManager() {
+type CrewManagerView = 'roster' | 'roles';
+type RosterSort = 'status' | 'name' | 'rarity' | 'type';
+
+export function CrewManager({ view }: { view: CrewManagerView }) {
   const rosterIds = useRunStore((state) => state.rosterIds);
   const guestIds = useRunStore((state) => state.guestIds);
   const activePartyIds = useRunStore((state) => state.activePartyIds);
@@ -289,7 +347,23 @@ export function CrewManager() {
   const upgradeCharacter = useRunStore((state) => state.upgradeCharacter);
   const [incomingId, setIncomingId] = useState<CharacterId | null>(null);
   const [inspectedId, setInspectedId] = useState<CharacterId | null>(null);
-  const availableIds = [...new Set([...rosterIds, ...guestIds])];
+  const [rosterSort, setRosterSort] = useState<RosterSort>('status');
+  const availableIds = [...new Set([...rosterIds, ...guestIds])].sort((leftId, rightId) => {
+    const leftActive = activePartyIds.includes(leftId);
+    const rightActive = activePartyIds.includes(rightId);
+    if (leftActive !== rightActive) return leftActive ? -1 : 1;
+    const left = getCrewCharacter(leftId);
+    const right = getCrewCharacter(rightId);
+    if (rosterSort === 'rarity') {
+      return cardRarityOrder.indexOf(right.rarity) - cardRarityOrder.indexOf(left.rarity) ||
+        left.name.localeCompare(right.name);
+    }
+    if (rosterSort === 'type') {
+      return elementLabels[left.fighter.types[0]].localeCompare(elementLabels[right.fighter.types[0]]) ||
+        left.name.localeCompare(right.name);
+    }
+    return left.name.localeCompare(right.name);
+  });
   const reserves = availableIds.filter((id) => !activePartyIds.includes(id));
   const assignedCount = Object.values(roleAssignments).filter(Boolean).length;
 
@@ -301,19 +375,20 @@ export function CrewManager() {
   };
 
   return (
-    <details className="crew-manager">
-      <summary>
+    <section className="crew-manager management-screen">
+      <header className="management-heading">
         <span>
-          <strong>Manage crew</strong>
+          <p className="eyebrow">Crew management</p>
+          <h2>{view === 'roster' ? 'Battle Party & Roster' : 'Ship Crew'}</h2>
           <small>
             {rosterIds.length} cards owned · {guestIds.length} story guests · {assignedCount}/10
             ship posts filled · {activePartyIds.length}/4 battle slots used
           </small>
         </span>
-      </summary>
+      </header>
 
       <div className="crew-manager-content">
-        <section aria-labelledby="roster-heading">
+        {view === 'roster' && <section aria-labelledby="roster-heading">
           <p className="panel-label" id="roster-heading">
             Roster records and battle lineup
           </p>
@@ -333,6 +408,15 @@ export function CrewManager() {
               </button>
             )}
           </div>
+          <label className="roster-sort">
+            <span>Sort roster</span>
+            <select value={rosterSort} onChange={(event) => setRosterSort(event.target.value as RosterSort)}>
+              <option value="status">Battle status</option>
+              <option value="name">Name</option>
+              <option value="rarity">Rarity</option>
+              <option value="type">Primary type</option>
+            </select>
+          </label>
           <div className="roster-records">
             {availableIds.map((id) => {
               const character = getCrewCharacter(id);
@@ -431,9 +515,9 @@ export function CrewManager() {
               );
             })}
           </div>
-        </section>
+        </section>}
 
-        <section aria-labelledby="ship-roles-heading">
+        {view === 'roles' && <section aria-labelledby="ship-roles-heading">
           <p className="panel-label" id="ship-roles-heading">
             Ship assignments
           </p>
@@ -482,7 +566,7 @@ export function CrewManager() {
               );
             })}
           </div>
-        </section>
+        </section>}
       </div>
       {inspectedId && (
         <CharacterDetailDialog
@@ -495,7 +579,7 @@ export function CrewManager() {
           stars={characterStars[inspectedId] ?? 1}
         />
       )}
-    </details>
+    </section>
   );
 }
 
@@ -587,7 +671,7 @@ function CharacterDetailDialog({
             const effect = move.effect === 'damage'
               ? `${move.power} power · one enemy`
               : move.effect === 'multi-target'
-                ? `${move.power} power · all enemies`
+                ? `${move.power} power · up to ${move.maxTargets} enemies`
                 : move.effect === 'guard'
                   ? `${move.damageReductionPercent}% guard · self`
                   : `${move.modifierPercent > 0 ? '+' : ''}${move.modifierPercent}% ${move.stat} · ${move.durationRounds} rounds${move.damageTypeOverride ? ` · attacks become ${elementLabels[move.damageTypeOverride]}` : ''}`;
@@ -634,10 +718,11 @@ function CardReveal({ result, duplicate }: { result: CardPullResult; duplicate: 
   );
 }
 
-function TavernPanel() {
+function TavernPanel({ focused = false }: { focused?: boolean }) {
   const berries = useRunStore((state) => state.berries);
   const pendingPack = useRunStore((state) => state.pendingPack);
   const openCardPack = useRunStore((state) => state.openCardPack);
+  const openPendingPack = useRunStore((state) => state.openPendingPack);
   const revealPackCard = useRunStore((state) => state.revealPackCard);
   const claimPackCard = useRunStore((state) => state.claimPackCard);
   const rosterIds = useRunStore((state) => state.rosterIds);
@@ -647,8 +732,30 @@ function TavernPanel() {
   const allRevealed = pendingPack?.cards.every((card) => card.revealed) ?? false;
   const cardsRemaining = pendingPack?.cards.filter((card) => !card.revealed).length ?? 0;
 
+  if (focused && pendingPack && (pendingPack.stage ?? 'cards') === 'sealed') {
+    return (
+      <section className={`pack-screen pack-${pendingPack.packId}`} aria-labelledby="sealed-pack-heading">
+        <div className="pack-screen-copy">
+          <p className="eyebrow">{arcReward ? 'Arc completion reward' : 'Tavern purchase'}</p>
+          <h2 id="sealed-pack-heading">{displayedPack.name}</h2>
+          <p>Five hidden candidates wait inside. Reveal every card, then keep exactly one.</p>
+        </div>
+        <button className="illustrated-pack" onClick={openPendingPack} type="button">
+          <span className="pack-sunburst" aria-hidden="true" />
+          <span className="pack-jolly-roger" aria-hidden="true">☠</span>
+          <small>{displayedPack.name.replace(' Card Pack', '')}</small>
+          <strong>Grand Line<br />Character Pack</strong>
+          <em>Five cards · Keep one</em>
+        </button>
+        <button className="primary-action" onClick={openPendingPack} type="button">
+          Break the seal
+        </button>
+      </section>
+    );
+  }
+
   return (
-    <section className="tavern-panel" aria-labelledby="tavern-heading">
+    <section className={`tavern-panel ${focused ? 'pack-screen reveal-screen' : ''}`} aria-labelledby="tavern-heading">
       <div className="tavern-copy">
         <p className="panel-label">{arcReward ? 'Arc completion reward' : 'Baratie card counter'}</p>
         <h3 id="tavern-heading">{displayedPack.name}</h3>
@@ -734,20 +841,52 @@ function TavernPanel() {
   );
 }
 
+export function PackOpeningScreen() {
+  return <TavernPanel focused />;
+}
+
+export function BattlePreparation({ onStart }: { onStart: () => void }) {
+  const currentNodeId = useRunStore((state) => state.currentNodeId);
+  const activePartyIds = useRunStore((state) => state.activePartyIds);
+  const node = getStoryNode(currentNodeId);
+
+  return (
+    <section className="battle-preparation">
+      <div className="battle-preparation-heading">
+        <p className="eyebrow">Prepare for battle</p>
+        <h2>{node?.name ?? 'Next encounter'}</h2>
+        <p>{node?.description}</p>
+        <p><strong>{activePartyIds.length}/4 fighters ready.</strong> Party changes do not alter ship assignments.</p>
+        <button className="primary-action" onClick={onStart} type="button">
+          Begin encounter
+        </button>
+      </div>
+      <CrewManager view="roster" />
+    </section>
+  );
+}
+
 export function VictoryPanel() {
   const bounty = useRunStore((state) => state.bounty);
   const berries = useRunStore((state) => state.berries);
   const artifacts = useRunStore((state) => state.artifacts);
+  const rosterIds = useRunStore((state) => state.rosterIds);
+  const journal = useRunStore((state) => state.journal);
   const abandonRun = useRunStore((state) => state.abandonRun);
 
   return (
     <section className="victory-panel">
-      <p className="eyebrow">East Blue cleared</p>
-      <h2>Arlong Park has fallen!</h2>
+      <p className="eyebrow">Two-arc campaign complete</p>
+      <h2>Orange Town is free!</h2>
       <p>
-        The crew completed the alpha voyage with a {bounty.toLocaleString()} bounty and{' '}
-        {berries.toLocaleString()} Berries.
+        Luffy completed Romance Dawn and Orange Town with a {bounty.toLocaleString()} bounty,{' '}
+        {berries.toLocaleString()} Berries, and {rosterIds.length} permanent crew cards.
       </p>
+      <div className="campaign-summary-grid">
+        <div><span>Arcs cleared</span><strong>2</strong></div>
+        <div><span>Permanent roster</span><strong>{rosterIds.length}</strong></div>
+        <div><span>Journal entries</span><strong>{journal.length}</strong></div>
+      </div>
       <div className="artifact-summary">
         <span>Artifacts</span>
         <ArtifactCollection artifactIds={artifacts} />

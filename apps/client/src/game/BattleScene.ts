@@ -104,6 +104,17 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
+    if (battle.lastAction) {
+      this.add
+        .text(480, 88, `${battle.lastAction.actorName} · ${battle.lastAction.moveName}`, {
+          color: battle.lastAction.side === 'enemy' ? '#ffb0a6' : '#9fe8c4',
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '14px',
+          fontStyle: 'bold',
+        })
+        .setOrigin(0.5);
+    }
+
     const left = battle.fighters.filter((fighter) => fighter.side === 'player');
     const right = battle.fighters.filter((fighter) => fighter.side === 'enemy');
     const positions = [

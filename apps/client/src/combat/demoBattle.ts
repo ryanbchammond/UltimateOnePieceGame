@@ -25,7 +25,7 @@ const debuff = (
   maxPp: 5,
 });
 const multiTarget = (id: string, name: string, element: Element, power: number): Move => ({
-  id, name, element, effect: 'multi-target', power, maxPp: 3,
+  id, name, element, effect: 'multi-target', power, maxTargets: 2, maxPp: 3,
 });
 
 export const demoFighters: FighterDefinition[] = [

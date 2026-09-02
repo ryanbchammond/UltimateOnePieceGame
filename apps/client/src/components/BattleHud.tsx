@@ -86,7 +86,7 @@ function describeMove(move: Move, fighter?: Fighter): string {
   }
   if (move.effect === 'damage') return `${element}${converted} · ${move.power} power · one enemy`;
   if (move.effect === 'multi-target') {
-    return `${element}${converted} · ${move.power} power · all enemies`;
+    return `${element}${converted} · ${move.power} power · up to ${move.maxTargets} enemies`;
   }
   if (move.effect === 'guard') {
     return `self · ${move.damageReductionPercent}% damage guard`;
@@ -186,6 +186,14 @@ export function BattleHud({ onVictory, onDefeat, revealBattleIq = false }: Battl
           )}
         </div>
       </div>
+
+      {battle.lastAction && (
+        <div className={`action-callout ${battle.lastAction.side}`} aria-live="assertive">
+          <span>{battle.lastAction.actorName}</span>
+          <strong>{battle.lastAction.moveName}</strong>
+          <small>Target: {battle.lastAction.targetNames.join(', ')}</small>
+        </div>
+      )}
 
       <div className="crew-panels">
         <div className="crew-panel">

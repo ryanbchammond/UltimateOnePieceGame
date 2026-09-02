@@ -73,6 +73,32 @@ h1 {
   color: #8fe3bb;
 }
 
+.voyage-navigation {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 7px;
+  border: 1px solid rgb(142 198 230 / 25%);
+  border-radius: 12px;
+  background: rgb(5 20 33 / 90%);
+}
+
+.voyage-navigation button {
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #9db8c6;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.voyage-navigation button[aria-current='page'] {
+  border-color: rgb(247 215 116 / 44%);
+  color: #f7d774;
+  background: rgb(247 215 116 / 9%);
+}
+
 .game-frame {
   min-width: 0;
   overflow: hidden;
@@ -379,6 +405,96 @@ h1 {
 .reward-receipt .negative dd { color: #ed9a9d; }
 .reward-receipt .neutral dd { color: #f7d774; }
 
+.reward-screen,
+.pack-screen,
+.battle-preparation {
+  margin-top: 16px;
+  padding: clamp(26px, 5vw, 58px);
+  border: 1px solid rgb(247 215 116 / 38%);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 75% 0%, rgb(247 215 116 / 14%), transparent 30rem),
+    linear-gradient(145deg, rgb(10 52 76 / 96%), rgb(3 15 25 / 99%));
+  box-shadow: 0 28px 90px rgb(0 0 0 / 42%);
+}
+
+.reward-screen-heading,
+.pack-screen-copy {
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.reward-screen h2,
+.pack-screen h2,
+.battle-preparation h2,
+.management-heading h2 {
+  margin: 4px 0 12px;
+  color: #f7d774;
+  font-family: Georgia, serif;
+  font-size: clamp(1.7rem, 4vw, 2.65rem);
+}
+
+.reward-screen-heading > p:last-child,
+.pack-screen-copy > p:last-child,
+.battle-preparation-heading > p {
+  color: #afc6d1;
+  line-height: 1.6;
+}
+
+.reward-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  max-width: 900px;
+  margin: 32px auto;
+}
+
+.reward-icon-grid article {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 20px 14px;
+  border: 1px solid rgb(142 198 230 / 22%);
+  border-radius: 12px;
+  background: rgb(3 17 28 / 62%);
+}
+
+.reward-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid currentcolor;
+  border-radius: 50%;
+  color: #f7d774;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.reward-icon-grid small {
+  color: #86a6b5;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.reward-icon-grid strong { color: #f3fbff; }
+.reward-icon-grid .positive strong { color: #83d9ad; }
+.reward-icon-grid .negative strong { color: #ed9a9d; }
+.reward-icon-grid .neutral strong { color: #f7d774; }
+
+.reward-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.reward-actions .primary-action { justify-self: auto; }
+
 .voyage-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(270px, 0.6fr);
@@ -398,6 +514,19 @@ h1 {
   border-radius: 12px;
   background: rgb(5 20 33 / 88%);
   box-shadow: 0 16px 45px rgb(0 0 0 / 20%);
+}
+
+.management-heading {
+  padding: 24px 26px 20px;
+}
+
+.management-heading h2 {
+  margin-bottom: 4px;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.management-heading small {
+  color: #91aeba;
 }
 
 .crew-manager summary {
@@ -431,6 +560,24 @@ h1 {
   gap: 24px;
   padding: 4px 19px 20px;
   border-top: 1px solid rgb(142 198 230 / 14%);
+}
+
+.roster-sort {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: -42px 0 12px auto;
+  color: #8eabbc;
+  font-size: 0.72rem;
+}
+
+.roster-sort select {
+  padding: 7px 10px;
+  border: 1px solid rgb(142 198 230 / 30%);
+  border-radius: 7px;
+  color: #edf7ff;
+  background: #071d2d;
 }
 
 .crew-manager-content > section {
@@ -887,6 +1034,61 @@ h1 {
     radial-gradient(circle at 86% 20%, rgb(247 215 116 / 12%), transparent 20rem),
     rgb(3 17 28 / 72%);
 }
+
+.tavern-panel.pack-screen {
+  grid-template-columns: 1fr;
+  min-height: 70vh;
+  margin-top: 16px;
+}
+
+.pack-screen:not(.tavern-panel) {
+  display: grid;
+  place-items: center;
+  gap: 24px;
+  min-height: 72vh;
+  text-align: center;
+}
+
+.illustrated-pack {
+  position: relative;
+  display: grid;
+  width: min(330px, 80vw);
+  aspect-ratio: 0.72;
+  place-items: center;
+  align-content: center;
+  gap: 9px;
+  overflow: hidden;
+  border: 3px solid #f7d774;
+  border-radius: 20px 20px 32px 32px;
+  color: #fff6cf;
+  background: linear-gradient(155deg, #b62e35, #5f1528 55%, #1c1630);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 58%), inset 0 0 0 7px rgb(255 255 255 / 7%);
+  cursor: pointer;
+  transform: rotate(-1.5deg);
+}
+
+.pack-orange-town .illustrated-pack {
+  background: linear-gradient(155deg, #ed8a26, #a43b28 55%, #43182f);
+}
+
+.pack-romance-dawn .illustrated-pack {
+  background: linear-gradient(155deg, #166d93, #174561 55%, #251a3e);
+}
+
+.pack-sunburst {
+  position: absolute;
+  width: 150%;
+  aspect-ratio: 1;
+  background: repeating-conic-gradient(rgb(247 215 116 / 18%) 0 8deg, transparent 8deg 18deg);
+  animation: aura-turn 20s linear infinite;
+}
+
+.illustrated-pack > :not(.pack-sunburst) { position: relative; z-index: 1; }
+.pack-jolly-roger { font-size: 4rem; }
+.illustrated-pack small,
+.illustrated-pack em { font-size: 0.7rem; letter-spacing: 0.13em; text-transform: uppercase; }
+.illustrated-pack strong { font-family: Georgia, serif; font-size: 1.65rem; line-height: 1.05; }
+.illustrated-pack em { font-style: normal; }
 
 .tavern-copy h3 {
   margin: -3px 0 7px;
@@ -1413,6 +1615,14 @@ h1 {
   opacity: 0.45;
 }
 
+.choice-list:has(.narrative-continue) {
+  grid-template-columns: minmax(0, 560px);
+}
+
+.narrative-continue {
+  border-color: rgb(247 215 116 / 52%) !important;
+}
+
 .victory-panel {
   text-align: center;
 }
@@ -1455,6 +1665,35 @@ h1 {
   margin-top: 24px;
 }
 
+.campaign-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 620px;
+  margin: 28px auto 0;
+}
+
+.campaign-summary-grid > div {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid rgb(142 198 230 / 20%);
+  border-radius: 10px;
+  background: rgb(3 17 28 / 55%);
+}
+
+.campaign-summary-grid span { color: #8ca8b7; font-size: 0.68rem; text-transform: uppercase; }
+.campaign-summary-grid strong { color: #f7d774; font-size: 1.45rem; }
+
+.battle-preparation {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.55fr) minmax(0, 1.45fr);
+  align-items: start;
+  gap: 28px;
+}
+
+.battle-preparation .crew-manager { margin-top: 0; }
+
 .game-canvas {
   aspect-ratio: 16 / 9;
 }
@@ -1484,6 +1723,23 @@ h1 {
   padding: 10px 14px;
   border-radius: 12px 12px 0 0;
 }
+
+.action-callout {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) minmax(140px, auto) 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border-right: 1px solid rgb(142 198 230 / 24%);
+  border-left: 1px solid rgb(142 198 230 / 24%);
+  background: rgb(12 53 73 / 96%);
+}
+
+.action-callout.enemy { background: rgb(80 34 42 / 94%); }
+.action-callout span { color: #9fd4ef; font-size: 0.72rem; font-weight: 750; }
+.action-callout.enemy span { color: #f0a8a4; }
+.action-callout strong { color: #fff2bd; font-family: Georgia, serif; }
+.action-callout small { color: #abc0cb; text-align: right; }
 
 .round-label {
   flex: none;
@@ -1850,6 +2106,27 @@ h1 {
     grid-template-columns: 1fr;
   }
 
+  .voyage-navigation {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .voyage-navigation button { padding: 9px 5px; font-size: 0.72rem; }
+
+  .battle-preparation,
+  .campaign-summary-grid,
+  .action-callout {
+    grid-template-columns: 1fr;
+  }
+
+  .action-callout small { text-align: left; }
+
+  .roster-sort {
+    align-items: stretch;
+    flex-direction: column;
+    margin: 0 0 12px;
+  }
+
   .reveal-stage {
     min-height: 250px;
   }
@@ -2039,6 +2316,7 @@ h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .pack-sunburst,
   .card-reveal,
   .card-reveal.reveal-enhanced,
   .card-reveal.reveal-special,

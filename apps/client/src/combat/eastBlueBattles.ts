@@ -26,8 +26,14 @@ const stat = (
   durationRounds: 2,
   maxPp: 5,
 });
-const multiTarget = (id: string, name: string, element: Element, power: number): Move => ({
-  id, name, element, effect: 'multi-target', power, maxPp: 3,
+const multiTarget = (
+  id: string,
+  name: string,
+  element: Element,
+  power: number,
+  maxTargets = 2,
+): Move => ({
+  id, name, element, effect: 'multi-target', power, maxTargets, maxPp: 3,
 });
 
 function createCrewEnemy(
@@ -206,14 +212,19 @@ function placeEnemies(...fighters: FighterDefinition[]): FighterDefinition[] {
   }));
 }
 
-function tuneOpeningBossLineup(fighters: FighterDefinition[]): FighterDefinition[] {
+function tuneLineup(
+  fighters: FighterDefinition[],
+  hpMultiplier: number,
+  attackMultiplier: number,
+  powerMultiplier: number,
+): FighterDefinition[] {
   return fighters.map((fighter) => ({
     ...fighter,
-    maxHp: Math.round(fighter.maxHp * 0.6),
-    attack: Math.round(fighter.attack * 0.5),
+    maxHp: Math.round(fighter.maxHp * hpMultiplier),
+    attack: Math.round(fighter.attack * attackMultiplier),
     moves: fighter.moves.map((move): Move =>
       move.effect === 'damage' || move.effect === 'multi-target'
-        ? { ...move, power: Math.max(1, Math.round(move.power * 0.5)) }
+        ? { ...move, power: Math.max(1, Math.round(move.power * powerMultiplier)) }
         : { ...move }),
   }));
 }
@@ -236,29 +247,48 @@ const executionGroundsPatrol = placeEnemies(
   marineRecruit,
 );
 
-const morganLastStand = tuneOpeningBossLineup(
+const morganLastStand = tuneLineup(
   placeEnemies(
     createCrewEnemy('morgan', 0, 70),
     commanderRipper,
     marineGunner,
   ),
+  0.6,
+  0.5,
+  0.5,
 );
 
 const beastTamersStreet = placeEnemies(
   createCrewEnemy('mohji', 0, 35),
   createCrewEnemy('richie', 0, 25),
-  createOrangePirate('beast-pirate', 'Beast Pirate', 0, 'beast'),
 );
 
-const harborDecoy = placeEnemies(
-  createCrewEnemy('mohji', 0, 35),
-  createCrewEnemy('richie', 0, 25),
+const harborDecoy = tuneLineup(
+  placeEnemies(
+    createCrewEnemy('mohji', 0, 35),
+    createCrewEnemy('richie', 0, 25),
+  ),
+  0.75,
+  0.8,
+  0.8,
 );
 
 const acrobatRooftops = placeEnemies(
   createCrewEnemy('cabaji', 0, 55),
   createOrangePirate('acrobat-pirate-a', 'Acrobat Pirate', 0, 'acrobat'),
   createOrangePirate('acrobat-pirate-b', 'Knife-Juggling Pirate', 0, 'acrobat'),
+);
+
+const buggysBigTop = tuneLineup(
+  placeEnemies(
+    createCrewEnemy('buggy', 0, 70),
+    createCrewEnemy('cabaji', 0, 60),
+    createCrewEnemy('mohji', 0, 45),
+    createCrewEnemy('richie', 0, 35),
+  ),
+  0.85,
+  0.85,
+  0.85,
 );
 
 const arlongPirates: FighterDefinition[] = [
@@ -349,6 +379,7 @@ const encounterEnemies: Record<EncounterId, FighterDefinition[]> = {
   'beast-tamers-street': beastTamersStreet,
   'harbor-decoy': harborDecoy,
   'acrobat-rooftops': acrobatRooftops,
+  'buggys-big-top': buggysBigTop,
   'shells-town': shellsTownMarines,
   'arlong-park': arlongPirates,
 };

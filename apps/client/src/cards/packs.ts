@@ -98,9 +98,43 @@ export const romanceDawnCardPack: CardPackDefinition = {
   featuredCharacterWeight,
 };
 
+export const orangeTownCardPack: CardPackDefinition = {
+  id: 'orange-town',
+  name: 'Orange Town Card Pack',
+  cost: 0,
+  cardCount: cardsPerPack,
+  guaranteedRarity: 'rare',
+  rarityOdds: {
+    common: 48,
+    uncommon: 20,
+    rare: 25,
+    epic: 6,
+    legendary: 1,
+    mythical: 0,
+  },
+  characterIds: [
+    'coby',
+    'johnny',
+    'yosaku',
+    'mohji',
+    'richie',
+    'helmeppo',
+    'cabaji',
+    'alvida',
+    'tashigi',
+    'gin',
+    'buggy',
+    'morgan',
+    'smoker',
+  ],
+  featuredCharacterIds: ['mohji', 'richie', 'cabaji', 'buggy'],
+  featuredCharacterWeight,
+};
+
 export const cardPacks: Record<CardPackId, CardPackDefinition> = {
   'baratie-east-blue': baratieCardPack,
   'romance-dawn': romanceDawnCardPack,
+  'orange-town': orangeTownCardPack,
 };
 
 export function getCardPack(packId: CardPackId): CardPackDefinition {
@@ -185,6 +219,7 @@ export function createCardPackOpening(
     packId: pack.id,
     packNumber,
     source,
+    stage: 'sealed',
     resume,
     cards: drawCardsFromPack(pack, random).map((characterId, slot) => ({
       cardId: `${openingId}-card-${slot + 1}`,

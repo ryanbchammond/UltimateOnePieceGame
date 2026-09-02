@@ -12,6 +12,7 @@ import {
 import { applyShipwrightProtection } from '../crew/roleEffects';
 import {
   activeStoryContent,
+  getAvailableNodes,
   getStoryArc,
   getStoryNode,
   isNodeAvailable,
@@ -41,8 +42,10 @@ interface RunStoreState extends RunSnapshot {
   removeActiveMember: (characterId: CharacterId) => boolean;
   swapActiveMember: (incomingId: CharacterId, outgoingId: CharacterId) => boolean;
   openCardPack: (random?: () => number) => CardPackOpening | null;
+  openPendingPack: () => boolean;
   revealPackCard: (cardId: string) => boolean;
   claimPackCard: (cardId: string) => boolean;
+  acknowledgeReward: (followDestination?: boolean) => void;
   setCharacterMovePp: (characterId: CharacterId, moveId: string, remainingPp: number) => void;
   upgradeCharacter: (characterId: CharacterId) => boolean;
   abandonRun: () => void;
@@ -88,6 +91,8 @@ function initialSnapshot(): RunSnapshot {
     pendingPack: null,
     crewAssignmentWindow: null,
     latestReward: null,
+    rewardPending: false,
+    rewardDestinationNodeId: null,
   };
 }
 
@@ -134,20 +139,33 @@ function getRunStorage(): StateStorage {
 const runStorage = createJSONStorage(getRunStorage);
 
 export function migrateRunState(persistedState: unknown, version: number): RunSnapshot {
-  if (version >= 2) return persistedState as RunSnapshot;
   if (version < 1 || !persistedState || typeof persistedState !== 'object') {
     return initialSnapshot();
   }
 
-  const snapshot = persistedState as RunSnapshot;
+  const persisted = persistedState as RunSnapshot;
+  const snapshot = version < 2
+    ? {
+        ...persisted,
+        visitedNodeIds: [
+          ...new Set([
+            ...persisted.completedNodeIds,
+            ...(persisted.currentNodeId ? [persisted.currentNodeId] : []),
+          ]),
+        ],
+      }
+    : persisted;
   return {
     ...snapshot,
-    visitedNodeIds: [
-      ...new Set([
-        ...snapshot.completedNodeIds,
-        ...(snapshot.currentNodeId ? [snapshot.currentNodeId] : []),
-      ]),
-    ],
+    pendingPack: snapshot.pendingPack
+      ? {
+          ...snapshot.pendingPack,
+          stage: snapshot.pendingPack.stage ??
+            (snapshot.pendingPack.cards.some((card) => card.revealed) ? 'cards' : 'sealed'),
+        }
+      : null,
+    rewardPending: version >= 3 ? snapshot.rewardPending ?? false : false,
+    rewardDestinationNodeId: version >= 3 ? snapshot.rewardDestinationNodeId ?? null : null,
   };
 }
 
@@ -205,6 +223,8 @@ export const useRunStore = create<RunStoreState>()(
           pendingPack: null,
           crewAssignmentWindow: null,
           latestReward: null,
+          rewardPending: false,
+          rewardDestinationNodeId: null,
         });
         return true;
       },
@@ -223,6 +243,7 @@ export const useRunStore = create<RunStoreState>()(
           ...completeCurrentNode(state, choice.outcome.journalEntry),
         };
         const resolution = applyStoryConsequences(completed, node, choice);
+        const available = getAvailableNodes(resolution.snapshot);
         set({
           ...resolution.snapshot,
           latestReward: createRewardReceipt(
@@ -231,6 +252,8 @@ export const useRunStore = create<RunStoreState>()(
             choice.outcome.detail,
             resolution.changes,
           ),
+          rewardPending: true,
+          rewardDestinationNodeId: available.length === 1 ? available[0].id : null,
         });
 
         return true;
@@ -264,6 +287,8 @@ export const useRunStore = create<RunStoreState>()(
                   : []),
               ],
             ),
+            rewardPending: true,
+            rewardDestinationNodeId: null,
           });
           return;
         }
@@ -275,6 +300,7 @@ export const useRunStore = create<RunStoreState>()(
           ...completeCurrentNode(state, victory.journalEntry),
         };
         const resolution = applyStoryConsequences(completed, node, victory);
+        const available = getAvailableNodes(resolution.snapshot);
         set({
           ...resolution.snapshot,
           phase: victory.phase ?? resolution.snapshot.phase,
@@ -284,6 +310,8 @@ export const useRunStore = create<RunStoreState>()(
             victory.detail,
             resolution.changes,
           ),
+          rewardPending: true,
+          rewardDestinationNodeId: available.length === 1 ? available[0].id : null,
         });
       },
 
@@ -380,6 +408,13 @@ export const useRunStore = create<RunStoreState>()(
         return opening;
       },
 
+      openPendingPack: () => {
+        const pack = get().pendingPack;
+        if (!pack || pack.stage === 'cards') return false;
+        set({ pendingPack: { ...pack, stage: 'cards' } });
+        return true;
+      },
+
       revealPackCard: (cardId) => {
         const state = get();
         const pack = state.pendingPack;
@@ -389,6 +424,7 @@ export const useRunStore = create<RunStoreState>()(
         set({
           pendingPack: {
             ...pack,
+            stage: 'cards',
             cards: pack.cards.map((candidate) =>
               candidate.cardId === cardId ? { ...candidate, revealed: true } : candidate,
             ),
@@ -443,8 +479,33 @@ export const useRunStore = create<RunStoreState>()(
               tone: 'positive',
             }],
           ),
+          rewardPending: true,
+          rewardDestinationNodeId:
+            resume?.phase === 'map' ? resume.currentNodeId : null,
         });
         return true;
+      },
+
+      acknowledgeReward: (followDestination = true) => {
+        const state = get();
+        const destinationId = followDestination ? state.rewardDestinationNodeId : null;
+        const destination = destinationId ? getStoryNode(destinationId) : undefined;
+        if (
+          destination &&
+          destination.arcId === state.activeArcId &&
+          state.phase === 'map' &&
+          isNodeAvailable(state, destination)
+        ) {
+          set({
+            currentNodeId: destination.id,
+            visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
+            phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
+            rewardPending: false,
+            rewardDestinationNodeId: null,
+          });
+          return;
+        }
+        set({ rewardPending: false, rewardDestinationNodeId: null });
       },
 
       setCharacterMovePp: (characterId, moveId, remainingPp) => {
@@ -487,6 +548,8 @@ export const useRunStore = create<RunStoreState>()(
               { label: 'Star level', value: `${currentStars + 1}★`, tone: 'positive' },
             ],
           ),
+          rewardPending: true,
+          rewardDestinationNodeId: null,
         });
         return true;
       },
@@ -495,7 +558,7 @@ export const useRunStore = create<RunStoreState>()(
     }),
     {
       name: runStorageKey,
-      version: 2,
+      version: 3,
       storage: runStorage,
       migrate: migrateRunState,
     },

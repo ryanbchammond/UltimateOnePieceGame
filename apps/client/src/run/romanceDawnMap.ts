@@ -405,6 +405,7 @@ export const romanceDawnChoices: Record<string, NodeChoice[]> = {
       detail: 'Coby leaves as a guest. Set a checkpoint and open the free Romance Dawn pack.',
       consequences: [
         { type: 'guest', action: 'remove', characterId: 'coby' },
+        { type: 'restore', target: 'move-pp' },
         { type: 'checkpoint' },
         {
           type: 'pack',

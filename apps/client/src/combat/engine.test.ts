@@ -65,7 +65,7 @@ describe('combat engine', () => {
   it('lets high-Battle-IQ enemies choose the highest-scored action', () => {
     const battle = createDemoBattle();
     const action = chooseEnemyAction(battle, () => 0);
-    expect(action).toEqual({ actorId: 'kuro', moveId: 'cat-claws', targetId: 'luffy' });
+    expect(action).toEqual({ actorId: 'kuro', moveId: 'shakushi', targetId: 'sanji' });
   });
 
   it('consumes move PP, rejects depleted moves, and exposes an emergency fallback', () => {
@@ -328,7 +328,7 @@ describe('combat engine', () => {
     ]);
   });
 
-  it('damages every living opponent with a multi-target move and settles all knockouts', () => {
+  it('hits up to the authored target cap, keeps the selected target primary, and works with fewer survivors', () => {
     const initial = createDemoBattle();
     const battle = {
       ...initial,
@@ -345,13 +345,34 @@ describe('combat engine', () => {
       targetId: 'kuro',
     });
 
-    expect(result.fighters.filter((fighter) => fighter.side === 'enemy').every((fighter) => fighter.hp === 0))
-      .toBe(true);
-    expect(result.status).toBe('victory');
-    expect(result.log.filter((entry) => entry.tone === 'faint')).toHaveLength(4);
+    expect(result.fighters.filter((fighter) => fighter.side === 'enemy' && fighter.hp === 0)
+      .map((fighter) => fighter.id)).toEqual(['kuro', 'arlong']);
+    expect(result.status).toBe('active');
+    expect(result.lastAction).toEqual(expect.objectContaining({
+      moveName: 'Gum-Gum Gatling',
+      targetNames: ['Captain Kuro', 'Arlong'],
+    }));
+
+    const twoSurvivorBattle = {
+      ...initial,
+      turnOrder: ['luffy'],
+      turnIndex: 0,
+      fighters: initial.fighters.map((fighter) =>
+        fighter.side === 'enemy'
+          ? { ...fighter, hp: fighter.id === 'smoker' || fighter.id === 'buggy' ? 1 : 0 }
+          : fighter,
+      ),
+    };
+    const finished = resolveAction(twoSurvivorBattle, {
+      actorId: 'luffy',
+      moveId: 'gatling',
+      targetId: 'buggy',
+    });
+    expect(finished.status).toBe('victory');
+    expect(finished.lastAction?.targetNames).toEqual(['Buggy', 'Smoker']);
   });
 
-  it('lets a failed Battle IQ roll choose another legal action and self-target it', () => {
+  it('lets a failed Battle IQ roll choose another legal action deterministically', () => {
     const initial = createDemoBattle();
     const battle = {
       ...initial,
@@ -365,8 +386,8 @@ describe('combat engine', () => {
 
     expect(chooseEnemyAction(battle, () => rolls.shift() ?? 0)).toEqual({
       actorId: 'kuro',
-      moveId: 'silent-step',
-      targetId: 'kuro',
+      moveId: 'out-of-the-bag',
+      targetId: 'luffy',
     });
   });
 

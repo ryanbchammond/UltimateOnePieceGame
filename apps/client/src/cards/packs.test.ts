@@ -8,6 +8,7 @@ import {
   drawCardsFromPack,
   featuredCharacterWeight,
   getCardAnimationKey,
+  orangeTownCardPack,
   romanceDawnCardPack,
 } from './packs';
 
@@ -117,6 +118,23 @@ describe('card packs', () => {
     );
     expect(cards).toEqual(['alvida', 'coby', 'coby', 'coby', 'coby']);
     expect(getCardAnimationKey('morgan')).toBe('rarity-epic');
+  });
+
+  it('uses the approved Orange Town support pool and officer weighting', () => {
+    expect(orangeTownCardPack.cost).toBe(0);
+    expect(orangeTownCardPack.rarityOdds).toEqual(romanceDawnCardPack.rarityOdds);
+    expect(orangeTownCardPack.featuredCharacterIds).toEqual(['mohji', 'richie', 'cabaji', 'buggy']);
+    expect(orangeTownCardPack.characterIds).toEqual([
+      'coby', 'johnny', 'yosaku', 'mohji', 'richie',
+      'helmeppo', 'cabaji',
+      'alvida', 'tashigi', 'gin', 'buggy',
+      'morgan', 'smoker',
+    ]);
+    expect(drawCardFromPack(orangeTownCardPack, sequenceRandom(0, 0.99))).toBe('richie');
+    expect(drawCardFromPack(orangeTownCardPack, sequenceRandom(0.5, 0.99))).toBe('cabaji');
+    expect(drawCardFromPack(orangeTownCardPack, sequenceRandom(0.7, 0.99))).toBe('buggy');
+    expect(drawCardFromPack(orangeTownCardPack, sequenceRandom(0.95, 0))).toBe('morgan');
+    expect(drawCardFromPack(orangeTownCardPack, sequenceRandom(0.995, 0))).toBe('smoker');
   });
 });
 

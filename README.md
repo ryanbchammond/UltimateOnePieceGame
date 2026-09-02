@@ -22,8 +22,8 @@ The client runs at `http://localhost:5173`. The server health endpoint is availa
 
 ## Playable campaign
 
-The active build contains the completed **Romance Dawn** arc and the first playable **Orange Town**
-slice using Story Mode and Landlubber difficulty:
+The active build contains the completed **Romance Dawn** and **Orange Town** campaign using Story
+Mode and Landlubber difficulty:
 
 - Begin at Foosha Village with 75 Berries and 90/100 hull
 - Choose extra provisions or a fully repaired tiny boat before departure
@@ -42,6 +42,10 @@ slice using Story Mode and Landlubber difficulty:
 - Choose among three Chouchou routes: Mohji's full raiding party, Nami's risky harbor decoy, or
   Cabaji's rooftop acrobats
 - Reconverge at a PP-restoring Mayor checkpoint with separate civilian, rally, and supply outcomes
+- Defeat Buggy, Cabaji, Mohji, and Richie in the four-unit Big Top climax
+- Recruit Nami permanently as the Navigator-preferred crewmate
+- Break the seal on a free Orange Town pack, reveal all five cards, and keep exactly one
+- Finish at a two-arc campaign summary with the full crew, bounty, and resources preserved
 - Use any one to four currently available permanent or guest characters without locked story slots
 - Manage battle composition independently from the ten permanent ship-role assignments
 - Track Berries, bounty, hull, PP, checkpoints, outcome receipts, and the captain's journal
@@ -52,8 +56,7 @@ slice using Story Mode and Landlubber difficulty:
 
 The five-card keep-one system, six rarities, shards, star upgrades, role effects, artifacts, and the
 legacy East Blue prototype remain implemented and covered as reusable foundations. Romance Dawn
-has completed its approved Phase 5D closure and hardening pass; Orange Town Phase 6A is playable
-through The Mayor's Resolve, with Buggy's climax and the campaign ending reserved for Phase 6B.
+and Orange Town now form the complete two-arc Story Mode vertical slice.
 
 Enemy turns resolve automatically. On a crew turn, select a living enemy card and then choose one
 of the acting fighter's four moves. Guards and self-buffs automatically target the acting fighter;
@@ -89,7 +92,7 @@ Implemented combat rules:
 - Self-buffs and enemy debuffs change Attack or Defense by 20% for two rounds
 - Reapplying the same stat effect refreshes its duration instead of stacking it
 - Diable Jambe buffs Sanji's Attack and converts his damaging moves to Fire for its duration
-- Multi-target moves use lower authored power and hit every living opponent once
+- Multi-target moves use lower authored power and hit up to their authored target cap
 - Enemies have a 0–100 Battle IQ. Tactical scoring considers knockouts, useful damage, type
   matchups, multi-target value, PP conservation, guard timing, buffs, and debuffs; Battle IQ is the
   chance to use the best-scored action, otherwise the enemy chooses another legal action. The

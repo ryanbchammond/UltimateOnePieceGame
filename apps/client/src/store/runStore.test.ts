@@ -219,6 +219,8 @@ describe('Story run store', () => {
     expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id))
       .toEqual(['marines-farewell']);
     useRunStore.getState().enterNode('marines-farewell');
+    useRunStore.getState().setCharacterMovePp('luffy', 'pistol', 1);
+    useRunStore.getState().setCharacterMovePp('zoro', 'onigiri', 0);
     expect(useRunStore.getState().resolveNode('honor-cobys-farewell')).toBe(true);
 
     const run = useRunStore.getState();
@@ -226,6 +228,7 @@ describe('Story run store', () => {
     expect(run.checkpointNodeId).toBe('marines-farewell');
     expect(run.guestIds).toEqual([]);
     expect(run.activePartyIds).toEqual(['luffy', 'zoro']);
+    expect(run.characterMovePp).toEqual({});
     expect(run.pendingPack).toEqual(expect.objectContaining({
       packId: 'romance-dawn',
       source: 'arc-reward',
@@ -343,6 +346,23 @@ describe('Story run store', () => {
       .toEqual(['foosha-departure', 'barrel-at-sea', 'alvida-deck']);
   });
 
+  it('migrates a version-2 pack into the sealed stage without replaying an old reward', () => {
+    useRunStore.getState().startRun();
+    useRunStore.setState({ currentNodeId: 'baratie', phase: 'node', berries: 600 });
+    const opening = useRunStore.getState().openCardPack(sequenceRandom(0))!;
+    const { stage: _stage, ...versionTwoOpening } = opening;
+
+    const migrated = migrateRunState({
+      ...useRunStore.getState(),
+      pendingPack: versionTwoOpening,
+      rewardPending: true,
+    }, 2);
+
+    expect(migrated.pendingPack?.stage).toBe('sealed');
+    expect(migrated.rewardPending).toBe(false);
+    expect(migrated.rewardDestinationNodeId).toBeNull();
+  });
+
   it('allows unrestricted one-to-four fighter parties from permanent and guest characters', () => {
     useRunStore.getState().startRun();
     useRunStore.setState({ guestIds: ['coby'] });
@@ -394,6 +414,9 @@ describe('Story run store', () => {
       'coby',
     ]);
     expect(result?.cards.every((card) => !card.revealed)).toBe(true);
+    expect(result?.stage).toBe('sealed');
+    expect(useRunStore.getState().openPendingPack()).toBe(true);
+    expect(useRunStore.getState().pendingPack?.stage).toBe('cards');
     expect(run.berries).toBe(300);
     expect(run.packsOpened).toBe(1);
     expect(run.pendingPack?.id).toBe('baratie-east-blue-1');
@@ -678,7 +701,8 @@ describe('Story run store', () => {
         checkpointNodeId: 'mayors-resolve',
         characterMovePp: {},
       }));
-      expect(getAvailableNodes(useRunStore.getState())).toEqual([]);
+      expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id))
+        .toEqual(['buggys-big-top']);
     },
   );
 
@@ -704,6 +728,63 @@ describe('Story run store', () => {
     expect(run.visitedNodeIds).not.toContain('beast-tamers-street');
     expect(run.visitedNodeIds).not.toContain('harbor-decoy');
     expect(getAvailableNodes(run).map((node) => node.id)).toEqual(['acrobat-rooftops']);
+  });
+
+  it('acknowledges a persisted outcome and continues directly to its sole destination', () => {
+    useRunStore.getState().startRun();
+    expect(useRunStore.getState().resolveNode('pack-provisions')).toBe(true);
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'map',
+      rewardPending: true,
+      rewardDestinationNodeId: 'barrel-at-sea',
+    }));
+
+    useRunStore.getState().acknowledgeReward();
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'node',
+      currentNodeId: 'barrel-at-sea',
+      rewardPending: false,
+      rewardDestinationNodeId: null,
+    }));
+  });
+
+  it('completes Buggy, permanently recruits Nami, and closes the campaign after the Orange Town pack', () => {
+    reachOrangeOfficerChoice();
+    expect(useRunStore.getState().resolveNode('set-harbor-decoy')).toBe(true);
+    expect(useRunStore.getState().enterNode('harbor-decoy')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().enterNode('mayors-resolve')).toBe(true);
+    expect(useRunStore.getState().resolveNode('rally-orange-town')).toBe(true);
+    expect(useRunStore.getState().enterNode('buggys-big-top')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+
+    expect(useRunStore.getState().berries).toBe(560);
+    expect(useRunStore.getState().bounty).toBe(12_170);
+    expect(useRunStore.getState().enterNode('maps-and-promises')).toBe(true);
+    expect(useRunStore.getState().resolveNode('welcome-nami-aboard')).toBe(true);
+
+    const beforePack = useRunStore.getState();
+    expect(beforePack.rosterIds).toContain('nami');
+    expect(beforePack.guestIds).not.toContain('nami');
+    expect(beforePack.roleAssignments.navigator).toBe('nami');
+    expect(beforePack.pendingPack).toEqual(expect.objectContaining({
+      packId: 'orange-town',
+      stage: 'sealed',
+      source: 'arc-reward',
+    }));
+
+    const pack = beforePack.pendingPack!;
+    expect(useRunStore.getState().openPendingPack()).toBe(true);
+    for (const card of pack.cards) useRunStore.getState().revealPackCard(card.cardId);
+    expect(useRunStore.getState().claimPackCard(pack.cards[0].cardId)).toBe(true);
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'victory',
+      activeArcId: 'orange-town',
+      currentNodeId: 'maps-and-promises',
+      pendingPack: null,
+      rewardPending: true,
+      crewAssignmentWindow: 'card-pull',
+    }));
   });
 
 });
