@@ -34,6 +34,7 @@ interface BattleStoreState {
     characterMovePp?: CharacterMovePp,
   ) => void;
   restart: () => void;
+  reset: () => void;
 }
 
 function firstLivingEnemy(battle: BattleState): string {
@@ -153,5 +154,18 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
         )
       : createDemoBattle();
     set({ battle, selectedTargetId: firstLivingEnemy(battle) });
+  },
+
+  reset: () => {
+    const battle = createDemoBattle();
+    set({
+      battle,
+      encounterId: null,
+      activePartyIds: [...startingActivePartyIds],
+      roleAssignments: createStartingRoleAssignments(),
+      characterStars: {},
+      characterMovePp: {},
+      selectedTargetId: firstLivingEnemy(battle),
+    });
   },
 }));

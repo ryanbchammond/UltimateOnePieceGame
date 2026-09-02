@@ -44,6 +44,46 @@ button:focus-visible {
   margin-bottom: 20px;
 }
 
+.masthead > div:first-child {
+  min-width: 0;
+}
+
+.masthead-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.app-version {
+  color: #7895a6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.quick-restart {
+  padding: 7px 11px;
+  border: 1px solid rgb(236 119 106 / 52%);
+  border-radius: 999px;
+  color: #ffb2a8;
+  background: rgb(93 27 30 / 30%);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.quick-restart:hover:not(:disabled) {
+  border-color: #ec776a;
+  background: rgb(126 36 38 / 48%);
+}
+
+.quick-restart:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 .eyebrow {
   margin: 0 0 5px;
   color: #72c8f5;
@@ -2093,9 +2133,16 @@ h1 {
   }
 
   .masthead {
-    align-items: start;
-    flex-direction: column;
-    gap: 12px;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .masthead-actions {
+    flex-wrap: wrap;
+  }
+
+  .masthead-actions .status {
+    display: none;
   }
 
   .setup-screen,

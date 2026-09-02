@@ -7,7 +7,7 @@ import { useRunStore } from './runStore';
 describe('battle store', () => {
   beforeEach(() => {
     useRunStore.getState().abandonRun();
-    useBattleStore.getState().restart();
+    useBattleStore.getState().reset();
   });
 
   it('falls back to the first living enemy when the selected target is defeated', () => {
@@ -106,6 +106,21 @@ describe('battle store', () => {
     expect(state.battle.fighters.filter((fighter) => fighter.side === 'player').map((fighter) => fighter.id))
       .toEqual(['luffy', 'zoro', 'sanji', 'usopp']);
     expect(state.battle.fighters.find((fighter) => fighter.id === 'luffy')?.maxHp).toBe(132);
+  });
+
+  it('clears the loaded encounter when restarting the voyage', () => {
+    useBattleStore.getState().startEncounter('alvida-deck', ['luffy']);
+    useBattleStore.setState((state) => ({
+      battle: { ...state.battle, status: 'victory', winner: 'player' },
+    }));
+
+    useBattleStore.getState().reset();
+
+    const state = useBattleStore.getState();
+    expect(state.encounterId).toBeNull();
+    expect(state.battle.status).toBe('active');
+    expect(state.activePartyIds).not.toEqual(['luffy']);
+    expect(state.characterMovePp).toEqual({});
   });
 
   it('persists player PP immediately and does not refill it on battle restart', () => {

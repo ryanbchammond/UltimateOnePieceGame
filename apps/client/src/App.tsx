@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { version } from '../package.json';
 import { BattleHud } from './components/BattleHud';
 import {
   BattlePreparation,
@@ -36,6 +37,8 @@ export function App() {
   const battleStatus = useBattleStore((state) => state.battle.status);
   const battlePartyIds = useBattleStore((state) => state.activePartyIds);
   const startEncounter = useBattleStore((state) => state.startEncounter);
+  const resetBattle = useBattleStore((state) => state.reset);
+  const abandonRun = useRunStore((state) => state.abandonRun);
   const [voyageScreen, setVoyageScreen] = useState<VoyageScreen>('map');
   const currentNode = getStoryNode(currentNodeId);
   const canAssignRoles = useRunStore(canManageShipAssignments);
@@ -63,6 +66,15 @@ export function App() {
     );
   };
 
+  const restartVoyage = () => {
+    if (runPhase !== 'setup' && !window.confirm('Restart the voyage? All current run progress will be lost.')) {
+      return;
+    }
+    resetBattle();
+    abandonRun();
+    setVoyageScreen('map');
+  };
+
   const statusText = runPhase === 'setup'
     ? 'Alpha ready'
     : runPhase === 'battle'
@@ -78,9 +90,21 @@ export function App() {
           <p className="eyebrow">Development build</p>
           <h1>Ultimate One Piece Adventure</h1>
         </div>
-        <span className="status" data-ready={runPhase === 'setup' || enginePhase === 'ready'}>
-          {statusText}
-        </span>
+        <div className="masthead-actions">
+          <span className="app-version">v{version}</span>
+          <span className="status" data-ready={runPhase === 'setup' || enginePhase === 'ready'}>
+            {statusText}
+          </span>
+          <button
+            className="quick-restart"
+            disabled={runPhase === 'setup'}
+            onClick={restartVoyage}
+            title={runPhase === 'setup' ? 'No active voyage' : 'Restart the current voyage'}
+            type="button"
+          >
+            Restart
+          </button>
+        </div>
       </header>
 
       {runPhase === 'setup' ? (
@@ -116,7 +140,7 @@ export function App() {
             )
           ) : runPhase === 'victory' ? (
             <>
-              <VictoryPanel />
+              <VictoryPanel onRestart={restartVoyage} />
               {canAssignRoles && <CrewManager view="roles" />}
             </>
           ) : (

@@ -866,13 +866,12 @@ export function BattlePreparation({ onStart }: { onStart: () => void }) {
   );
 }
 
-export function VictoryPanel() {
+export function VictoryPanel({ onRestart }: { onRestart: () => void }) {
   const bounty = useRunStore((state) => state.bounty);
   const berries = useRunStore((state) => state.berries);
   const artifacts = useRunStore((state) => state.artifacts);
   const rosterIds = useRunStore((state) => state.rosterIds);
   const journal = useRunStore((state) => state.journal);
-  const abandonRun = useRunStore((state) => state.abandonRun);
 
   return (
     <section className="victory-panel">
@@ -891,7 +890,7 @@ export function VictoryPanel() {
         <span>Artifacts</span>
         <ArtifactCollection artifactIds={artifacts} />
       </div>
-      <button className="primary-action" onClick={abandonRun} type="button">
+      <button className="primary-action" onClick={onRestart} type="button">
         Start a new voyage
       </button>
     </section>
