@@ -5,6 +5,7 @@ import {
   getCurrentFighter,
   getRemainingPp,
   getUsableMoves,
+  getValidTargets,
 } from '../combat/engine';
 import {
   describeMultiplier,
@@ -29,19 +30,32 @@ function describeMove(move: Move, fighter?: Fighter): string {
   const effectiveElement = fighter ? getEffectiveMoveElement(fighter, move) : move.element;
   const element = elementLabels[effectiveElement];
   const converted = effectiveElement !== move.element ? ' · converted' : '';
-  if (move.id === desperateStrike.id) {
-    return `${element}${converted} · ${desperateStrike.power} power · no PP required`;
-  }
-  if (move.effect === 'damage') return `${element}${converted} · ${move.power} power · one enemy`;
-  if (move.effect === 'multi-target') {
-    return `${element}${converted} · ${move.power} power · up to ${move.maxTargets} enemies`;
-  }
-  if (move.effect === 'guard') {
-    return `self · ${move.damageReductionPercent}% damage guard`;
-  }
-  const stat = move.stat === 'attack' ? 'ATK' : 'DEF';
-  const amount = `${move.modifierPercent > 0 ? '+' : ''}${move.modifierPercent}% ${stat}`;
-  return `${move.target} · ${amount} · ${move.durationRounds} rounds${move.damageTypeOverride ? ` · attacks become ${elementLabels[move.damageTypeOverride]}` : ''}`;
+  const target = move.target === 'self'
+    ? 'self'
+    : move.target === 'ally'
+      ? 'one ally (self allowed)'
+      : move.target === 'enemy-group'
+        ? `up to ${move.maxTargets} enemies`
+        : 'one enemy';
+  const effects = move.effects.map((effect) => {
+    if (effect.effect === 'damage') {
+      const condition = effect.conditionalBonus
+        ? ` (+${effect.conditionalBonus.power} power when ${effect.conditionalBonus.condition.replaceAll('-', ' ')})`
+        : '';
+      return `${effect.power} power${condition}`;
+    }
+    if (effect.effect === 'guard') return `${effect.damageReductionPercent}% Guard`;
+    if (effect.effect === 'remove-guard') return 'break Guard';
+    if (effect.effect === 'heal') return `heal ${effect.maxHpPercent}% max HP`;
+    if (effect.effect === 'cleanse') return 'cleanse negative effects';
+    if (effect.effect === 'damage-over-time') {
+      return `${effect.statusName}: ${effect.maxHpPercent}% max HP for ${effect.durationTurns} turns`;
+    }
+    const stat = effect.stat === 'attack' ? 'ATK' : effect.stat === 'defense' ? 'DEF' : 'SPD';
+    const amount = `${effect.modifierPercent > 0 ? '+' : ''}${effect.modifierPercent}% ${stat}`;
+    return `${amount} for ${effect.durationTurns} turns${effect.damageTypeOverride ? `; attacks become ${elementLabels[effect.damageTypeOverride]}` : ''}`;
+  }).join(' → ');
+  return `${element}${converted} · ${target} · ${effects}${move.id === desperateStrike.id ? ' · no PP required' : ''}`;
 }
 
 function fighterTypeLabel(fighter: Fighter): string {
@@ -84,11 +98,11 @@ function TypeGuide() {
 }
 
 function TargetSelector({
-  enemies,
+  fighters,
   isPlayerTurn,
   selectedTargetId,
 }: {
-  enemies: Fighter[];
+  fighters: Fighter[];
   isPlayerTurn: boolean;
   selectedTargetId: string;
 }) {
@@ -101,12 +115,12 @@ function TargetSelector({
         <small>{isPlayerTurn ? 'Select here or on the battlefield' : 'Locked during enemy turn'}</small>
       </div>
       <div className="target-list">
-        {enemies.map((fighter) => {
+        {fighters.map((fighter) => {
           const defeated = fighter.hp === 0;
           const selected = selectedTargetId === fighter.id && !defeated;
           return (
             <button
-              aria-label={`${fighter.name}, ${fighter.hp} of ${fighter.maxHp} HP, ${fighterTypeLabel(fighter)}${fighter.devilFruitUser ? ', Devil Fruit user' : ''}`}
+              aria-label={`${fighter.name}, ${fighter.side === 'player' ? 'ally' : 'enemy'}, ${fighter.hp} of ${fighter.maxHp} HP, ${fighterTypeLabel(fighter)}${fighter.devilFruitUser ? ', Devil Fruit user' : ''}`}
               aria-pressed={selected}
               className={selected ? 'selected' : ''}
               disabled={!isPlayerTurn || defeated}
@@ -115,7 +129,7 @@ function TargetSelector({
               type="button"
             >
               <span>
-                <strong>{fighter.name}</strong>
+                <strong>{fighter.name} <small>{fighter.side === 'player' ? 'Ally' : 'Enemy'}</small></strong>
                 <b>{defeated ? 'KO' : `${fighter.hp}/${fighter.maxHp}`}</b>
               </span>
               <HpBar fighter={fighter} />
@@ -135,10 +149,17 @@ function ContextualTips({ current, target }: { current: Fighter | null; target?:
   } else if (current.side === 'enemy') {
     tips.push(`${current.name} is choosing an action. The initiative strip shows who acts next.`);
   } else if (!target) {
-    tips.push('Choose a living enemy on the battlefield or in the accessible target list.');
+    tips.push('Choose a living fighter on the battlefield or in the accessible target list.');
+  } else if (target.side === current.side) {
+    tips.push(`Selected ally: ${target.name} · ${target.hp}/${target.maxHp} HP.`);
+    if (target.activeEffects.some((effect) =>
+      effect.effect === 'damage-over-time' ||
+      (effect.effect === 'stat' && effect.modifierPercent < 0))) {
+      tips.push(`${target.name} has a negative effect that can be cleansed.`);
+    }
   } else {
     const damagingMoves = getUsableMoves(current).filter(
-      (move) => move.effect === 'damage' || move.effect === 'multi-target',
+      (move) => move.effects.some((effect) => effect.effect === 'damage'),
     );
     const rankedMoves = damagingMoves
       .map((move) => {
@@ -198,7 +219,7 @@ export function BattleHud({
     ? current.moves.every((move) => getRemainingPp(current, move) === 0)
     : false;
   const enemies = battle.fighters.filter((fighter) => fighter.side === 'enemy');
-  const selectedTarget = enemies.find(
+  const selectedTarget = battle.fighters.find(
     (fighter) => fighter.id === selectedTargetId && fighter.hp > 0,
   );
   const remainingTurns = battle.turnOrder.slice(battle.turnIndex).map((id) =>
@@ -253,8 +274,8 @@ export function BattleHud({
                 <p>
                   {isPlayerTurn
                     ? selectedTarget
-                      ? `Targeting ${selectedTarget.name}`
-                      : 'Select a living enemy'
+                      ? `Selected ${selectedTarget.name}`
+                      : 'Select a living fighter'
                     : 'Enemy is choosing an action…'}
                 </p>
               </div>
@@ -262,9 +283,13 @@ export function BattleHud({
                 <div className="move-list">
                   {current.moves.map((move) => {
                     const remainingPp = getRemainingPp(current, move);
+                    const validTargets = getValidTargets(battle, current, move);
+                    const hasValidSelection = move.target === 'self' || validTargets.some(
+                      (fighter) => fighter.id === selectedTargetId,
+                    );
                     return (
                       <button
-                        disabled={remainingPp === 0}
+                        disabled={remainingPp === 0 || !hasValidSelection}
                         onClick={() => useMove(move.id)}
                         type="button"
                         key={move.id}
@@ -274,7 +299,9 @@ export function BattleHud({
                           <b>{remainingPp}/{move.maxPp} PP</b>
                         </span>
                         <small>{describeMove(move, current)}</small>
-                        {remainingPp === 0 && <em>Depleted</em>}
+                        {remainingPp === 0
+                          ? <em>Depleted</em>
+                          : !hasValidSelection && <em>Select a valid {move.target === 'ally' ? 'ally' : 'enemy'}</em>}
                       </button>
                     );
                   })}
@@ -307,7 +334,7 @@ export function BattleHud({
 
       <aside className="combat-sidebar" aria-label="Combat information">
         <TargetSelector
-          enemies={enemies}
+          fighters={battle.fighters}
           isPlayerTurn={Boolean(isPlayerTurn)}
           selectedTargetId={selectedTargetId}
         />

@@ -108,11 +108,12 @@ export class BattleScene extends Phaser.Scene {
     graphics.fillRoundedRect(x - barWidth / 2, y + 74, barWidth * hpRatio, 8, 4);
 
     if (fighter.activeEffects.length > 0) {
-      const effects = fighter.activeEffects.map((effect) =>
-        effect.effect === 'guard'
-          ? `Guard ${effect.damageReductionPercent}%`
-          : `${effect.stat === 'attack' ? 'ATK' : 'DEF'} ${effect.modifierPercent > 0 ? '+' : ''}${effect.modifierPercent}% ${effect.remainingRounds}r`,
-      );
+      const effects = fighter.activeEffects.map((effect) => {
+        if (effect.effect === 'guard') return `Guard ${effect.damageReductionPercent}%`;
+        if (effect.effect === 'damage-over-time') return `${effect.name} ${effect.remainingTurns}t`;
+        const stat = effect.stat === 'attack' ? 'ATK' : effect.stat === 'defense' ? 'DEF' : 'SPD';
+        return `${stat} ${effect.modifierPercent > 0 ? '+' : ''}${effect.modifierPercent}% ${effect.remainingTurns}t`;
+      });
       this.add
         .text(x, y + 91, effects.join(' · '), {
           color: '#f7d774',
@@ -175,7 +176,14 @@ export class BattleScene extends Phaser.Scene {
 
     left.forEach((fighter, index) => {
       const [x, y] = positions[index];
-      this.drawFighter(fighter, x, y, fighter.id === current?.id, false, false);
+      this.drawFighter(
+        fighter,
+        x,
+        y,
+        fighter.id === current?.id,
+        fighter.id === selectedTargetId && fighter.hp > 0,
+        current?.side === 'player' && fighter.hp > 0,
+      );
     });
     right.forEach((fighter, index) => {
       const [sourceX, y] = positions[index];

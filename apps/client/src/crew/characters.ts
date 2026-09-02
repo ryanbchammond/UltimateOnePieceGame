@@ -1,4 +1,26 @@
-import type { Element, FighterDefinition, Move } from '../combat/types';
+import {
+  cleanseEffect,
+  damageEffect,
+  damageOverTimeEffect,
+  directDamage,
+  enemyStat,
+  groupDamage,
+  guardEffect,
+  healEffect,
+  move,
+  removeGuardEffect,
+  selfGuard,
+  selfStat,
+  statEffect,
+} from '../combat/moves';
+import type {
+  CombatStat,
+  DamageCondition,
+  Element,
+  FighterDefinition,
+  Move,
+  MoveEffect,
+} from '../combat/types';
 import type {
   CardRarity,
   CharacterCapability,
@@ -19,23 +41,11 @@ export interface CrewCharacter {
   fighter: Omit<FighterDefinition, 'side' | 'slot'>;
 }
 
-const damage = (id: string, name: string, element: Element, power: number, maxPp = 8): Move => ({
-  id,
-  name,
-  element,
-  effect: 'damage',
-  power,
-  maxPp,
-});
+const damage = (id: string, name: string, element: Element, power: number, maxPp = 8): Move =>
+  directDamage(id, name, element, power, maxPp);
 
-const guard = (id: string, name: string, element: Element): Move => ({
-  id,
-  name,
-  element,
-  effect: 'guard',
-  damageReductionPercent: 40,
-  maxPp: 6,
-});
+const guard = (id: string, name: string, element: Element): Move =>
+  selfGuard(id, name, element);
 
 const buff = (
   id: string,
@@ -43,35 +53,14 @@ const buff = (
   element: Element,
   stat: 'attack' | 'defense',
   damageTypeOverride?: Element,
-): Move => ({
-  id,
-  name,
-  element,
-  effect: 'stat',
-  target: 'self',
-  stat,
-  modifierPercent: 20,
-  durationRounds: 2,
-  damageTypeOverride,
-  maxPp: 5,
-});
+): Move => selfStat(id, name, element, stat, 20, 5, damageTypeOverride);
 
 const debuff = (
   id: string,
   name: string,
   element: Element,
-  stat: 'attack' | 'defense',
-): Move => ({
-  id,
-  name,
-  element,
-  effect: 'stat',
-  target: 'enemy',
-  stat,
-  modifierPercent: -20,
-  durationRounds: 2,
-  maxPp: 5,
-});
+  stat: CombatStat,
+): Move => enemyStat(id, name, element, stat);
 
 const multiTarget = (
   id: string,
@@ -79,15 +68,56 @@ const multiTarget = (
   element: Element,
   power: number,
   maxTargets = 2,
-): Move => ({
-  id,
-  name,
-  element,
-  effect: 'multi-target',
-  power,
-  maxTargets,
-  maxPp: 3,
-});
+): Move => groupDamage(id, name, element, power, maxTargets);
+
+const conditionalDamage = (
+  id: string,
+  name: string,
+  element: Element,
+  power: number,
+  condition: DamageCondition,
+  bonusPower = 8,
+  maxPp = 8,
+): Move => move(id, name, element, maxPp, 'enemy', [
+  damageEffect(power, { condition, power: bonusPower }),
+]);
+
+const allyGuard = (id: string, name: string, element: Element, maxPp = 6): Move =>
+  move(id, name, element, maxPp, 'ally', [guardEffect()]);
+
+const allyStat = (
+  id: string,
+  name: string,
+  element: Element,
+  stat: CombatStat,
+  maxPp = 5,
+): Move => move(id, name, element, maxPp, 'ally', [statEffect(id, stat, 20)]);
+
+const guardBreakDamage = (
+  id: string,
+  name: string,
+  element: Element,
+  power: number,
+  maxPp: number,
+  guardedBonus = 0,
+): Move => move(id, name, element, maxPp, 'enemy', [
+  removeGuardEffect(),
+  damageEffect(
+    power,
+    guardedBonus > 0
+      ? { condition: 'target-guarding', power: guardedBonus }
+      : undefined,
+  ),
+]);
+
+const groupMove = (
+  id: string,
+  name: string,
+  element: Element,
+  maxTargets: number,
+  maxPp: number,
+  effects: MoveEffect[],
+): Move => move(id, name, element, maxPp, 'enemy-group', effects, { maxTargets });
 
 export const shipRoleOrder: ShipRole[] = [
   'captain',
@@ -150,10 +180,13 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['brawler'],
       devilFruitUser: true,
       moves: [
-        damage('pistol', 'Gum-Gum Pistol', 'brawler', 22),
+        conditionalDamage('pistol', 'Gum-Gum Pistol', 'brawler', 22, 'actor-below-half-hp'),
         guard('balloon', 'Gum-Gum Balloon', 'brawler'),
-        buff('battle-cry', 'Battle Cry', 'brawler', 'attack'),
-        multiTarget('gatling', 'Gum-Gum Gatling', 'brawler', 11),
+        allyStat('battle-cry', 'Battle Cry', 'brawler', 'attack'),
+        groupMove('gatling', 'Gum-Gum Gatling', 'brawler', 2, 3, [
+          removeGuardEffect(),
+          damageEffect(11),
+        ]),
       ],
     },
   },
@@ -173,7 +206,7 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['brawler'],
       devilFruitUser: false,
       moves: [
-        damage('iron-mace', 'Iron Mace', 'brawler', 16),
+        guardBreakDamage('iron-mace', 'Iron Mace', 'brawler', 18, 6, 8),
         guard('iron-skin', 'Iron Skin', 'brawler'),
         debuff('captains-threat', "Captain's Threat", 'brawler', 'attack'),
         multiTarget('mace-sweep', 'Mace Sweep', 'brawler', 7),
@@ -196,10 +229,10 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['swordsman'],
       devilFruitUser: false,
       moves: [
-        damage('axe-drop', 'Axe Drop', 'swordsman', 20),
-        guard('iron-authority', 'Iron Authority', 'swordsman'),
-        buff('tyrants-order', "Tyrant's Order", 'brawler', 'attack'),
-        multiTarget('execution-sweep', 'Execution Sweep', 'swordsman', 9),
+        guardBreakDamage('axe-drop', 'Axe Drop', 'swordsman', 20, 6),
+        allyStat('iron-authority', 'Iron Authority', 'swordsman', 'defense'),
+        allyStat('tyrants-order', "Tyrant's Order", 'brawler', 'attack'),
+        groupMove('execution-sweep', 'Execution Sweep', 'swordsman', 3, 2, [damageEffect(9)]),
       ],
     },
   },
@@ -220,9 +253,17 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       devilFruitUser: false,
       moves: [
         damage('pistol-shot', 'Pistol Shot', 'sniper', 15),
-        guard('human-shield', 'Human Shield', 'brawler'),
+        allyGuard('human-shield', 'Human Shield', 'brawler', 5),
         debuff('cheap-taunt', 'Cheap Taunt', 'brawler', 'defense'),
-        multiTarget('wild-barrage', 'Wild Barrage', 'sniper', 6),
+        conditionalDamage(
+          'wild-barrage',
+          'Wild Barrage',
+          'sniper',
+          14,
+          'target-negative-effect',
+          8,
+          4,
+        ),
       ],
     },
   },
@@ -244,7 +285,7 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       moves: [
         damage('onigiri', 'Oni Giri', 'swordsman', 24),
         guard('two-sword-guard', 'Two-Sword Guard', 'swordsman'),
-        buff('lions-song-setup', "Lion's Song Setup", 'swordsman', 'attack'),
+        guardBreakDamage('lions-song-setup', "Lion's Song", 'swordsman', 30, 3, 8),
         multiTarget('tatsumaki', 'Tatsumaki', 'swordsman', 12, 3),
       ],
     },
@@ -265,10 +306,12 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['brawler'],
       devilFruitUser: false,
       moves: [
-        damage('mouton-shot', 'Mouton Shot', 'brawler', 22),
-        guard('party-table-guard', 'Party Table Guard', 'brawler'),
+        conditionalDamage('mouton-shot', 'Mouton Shot', 'brawler', 22, 'actor-below-half-hp'),
+        groupMove('party-table-guard', 'Party Table Kick Course', 'brawler', 2, 3, [
+          damageEffect(10),
+        ]),
         buff('diable-jambe', 'Diable Jambe', 'fire', 'attack', 'fire'),
-        multiTarget('concasser', 'Concasser', 'brawler', 11),
+        guardBreakDamage('concasser', 'Concasser', 'brawler', 26, 3, 8),
       ],
     },
   },
@@ -288,10 +331,21 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['lightning'],
       devilFruitUser: false,
       moves: [
-        damage('thunderbolt-tempo', 'Thunderbolt Tempo', 'lightning', 24),
-        guard('mirage-tempo', 'Mirage Tempo', 'lightning'),
+        conditionalDamage(
+          'thunderbolt-tempo',
+          'Thunderbolt Tempo',
+          'lightning',
+          24,
+          'target-negative-effect',
+          8,
+          5,
+        ),
+        allyGuard('mirage-tempo', 'Mirage Tempo', 'lightning'),
         debuff('rain-tempo', 'Rain Tempo', 'water', 'defense'),
-        multiTarget('cyclone-tempo', 'Cyclone Tempo', 'nature', 10),
+        groupMove('cyclone-tempo', 'Cyclone Tempo', 'nature', 2, 3, [
+          damageEffect(9),
+          statEffect('cyclone-tempo', 'speed', -20),
+        ]),
       ],
     },
   },
@@ -311,10 +365,13 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['sniper'],
       devilFruitUser: false,
       moves: [
-        damage('lead-star', 'Lead Star', 'sniper', 20),
-        guard('usopp-hammer', 'Usopp Hammer Guard', 'brawler'),
-        debuff('smoke-star', 'Smoke Star', 'sniper', 'attack'),
-        multiTarget('exploding-star', 'Exploding Star', 'fire', 11),
+        conditionalDamage('lead-star', 'Lead Star', 'sniper', 20, 'target-negative-effect', 8, 6),
+        guardBreakDamage('usopp-hammer', 'Usopp Hammer', 'brawler', 12, 4, 8),
+        debuff('smoke-star', 'Smoke Star', 'sniper', 'speed'),
+        move('exploding-star', 'Exploding Star', 'fire', 4, 'enemy', [
+          damageEffect(12),
+          damageOverTimeEffect('burn', 'Burn'),
+        ]),
       ],
     },
   },
@@ -334,9 +391,12 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['brawler'],
       devilFruitUser: false,
       moves: [
-        damage('honest-impact', 'Honest Impact', 'brawler', 18),
-        guard('brace', 'Brace', 'brawler'),
-        buff('rallying-resolve', 'Rallying Resolve', 'brawler', 'defense'),
+        conditionalDamage('honest-impact', 'Honest Impact', 'brawler', 18, 'actor-below-half-hp'),
+        allyGuard('brace', 'Brace', 'brawler'),
+        move('rallying-resolve', 'Rallying Resolve', 'brawler', 3, 'ally', [
+          healEffect(),
+          statEffect('rallying-resolve', 'defense', 20),
+        ]),
         multiTarget('marine-drill', 'Marine Drill', 'brawler', 8),
       ],
     },
@@ -358,9 +418,17 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       devilFruitUser: false,
       moves: [
         damage('sword-rush', 'Sword Rush', 'swordsman', 19),
-        guard('hunter-parry', 'Hunter Parry', 'swordsman'),
-        buff('hunter-focus', 'Hunter Focus', 'swordsman', 'attack'),
-        multiTarget('bounty-charge', 'Bounty Charge', 'brawler', 9),
+        allyGuard('hunter-parry', 'Hunter Parry', 'swordsman'),
+        selfStat('hunter-focus', 'Hunter Focus', 'swordsman', 'speed'),
+        conditionalDamage(
+          'bounty-charge',
+          'Bounty Charge',
+          'brawler',
+          18,
+          'target-negative-effect',
+          8,
+          4,
+        ),
       ],
     },
   },
@@ -380,9 +448,12 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['swordsman'],
       devilFruitUser: false,
       moves: [
-        damage('cross-cut', 'Cross Cut', 'swordsman', 19),
+        conditionalDamage('cross-cut', 'Cross Cut', 'swordsman', 19, 'actor-below-half-hp'),
         guard('crossed-blades', 'Crossed Blades', 'swordsman'),
-        buff('bounty-hunter-grit', 'Bounty Hunter Grit', 'brawler', 'defense'),
+        move('bounty-hunter-grit', 'Bounty Hunter Grit', 'brawler', 4, 'self', [
+          cleanseEffect(),
+          statEffect('bounty-hunter-grit', 'defense', 20),
+        ]),
         multiTarget('hunter-rush', 'Hunter Rush', 'swordsman', 9),
       ],
     },
@@ -403,9 +474,11 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['swordsman'],
       devilFruitUser: false,
       moves: [
-        damage('shigure-slash', 'Shigure Slash', 'swordsman', 21),
-        guard('sword-collector-stance', 'Sword Collector Stance', 'swordsman'),
-        buff('quick-draw', 'Quick Draw', 'swordsman', 'attack'),
+        guardBreakDamage('shigure-slash', 'Shigure Slash', 'swordsman', 21, 5, 8),
+        move('sword-collector-stance', 'Sword Collector Stance', 'swordsman', 4, 'ally', [
+          cleanseEffect(),
+        ]),
+        allyStat('quick-draw', 'Quick Draw', 'swordsman', 'speed'),
         multiTarget('shigure-sweep', 'Shigure Sweep', 'swordsman', 10),
       ],
     },
@@ -426,10 +499,15 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['brawler'],
       devilFruitUser: false,
       moves: [
-        damage('tonfa-crush', 'Tonfa Crush', 'brawler', 22),
+        move('tonfa-crush', 'Tonfa Crush', 'brawler', 5, 'enemy', [
+          damageEffect(16),
+          damageOverTimeEffect('bruised', 'Bruised'),
+        ]),
         guard('crossed-tonfas', 'Crossed Tonfas', 'brawler'),
         debuff('demon-glare', 'Demon Glare', 'beast', 'defense'),
-        multiTarget('battle-spin', 'Battle Spin', 'beast', 11),
+        groupMove('battle-spin', 'Battle Spin', 'beast', 2, 3, [
+          damageEffect(10, { condition: 'target-negative-effect', power: 6 }),
+        ]),
       ],
     },
   },
@@ -450,10 +528,13 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['sniper'],
       devilFruitUser: true,
       moves: [
-        damage('chop-cannon', 'Chop-Chop Cannon', 'brawler', 18),
+        conditionalDamage('chop-cannon', 'Chop-Chop Cannon', 'brawler', 18, 'actor-below-half-hp'),
         guard('chop-escape', 'Chop-Chop Escape', 'sniper'),
         debuff('flashy-taunt', 'Flashy Taunt', 'sniper', 'attack'),
-        multiTarget('buggy-ball', 'Buggy Ball', 'fire', 12, 3),
+        groupMove('buggy-ball', 'Buggy Ball', 'fire', 3, 2, [
+          damageEffect(10),
+          damageOverTimeEffect('burn', 'Burn'),
+        ]),
       ],
     },
   },
@@ -474,9 +555,11 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       devilFruitUser: false,
       moves: [
         damage('beast-whip', 'Beast Whip', 'beast', 16),
-        guard('tamers-guard', "Tamer's Guard", 'beast'),
-        buff('sic-em', "Sic 'Em", 'beast', 'attack'),
-        multiTarget('lion-stampede', 'Lion Stampede', 'beast', 7),
+        allyGuard('tamers-guard', "Tamer's Guard", 'beast'),
+        allyStat('sic-em', "Sic 'Em", 'beast', 'attack'),
+        groupMove('lion-stampede', 'Lion Stampede', 'beast', 2, 3, [
+          damageEffect(7, { condition: 'target-negative-effect', power: 6 }),
+        ]),
       ],
     },
   },
@@ -496,10 +579,10 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['beast'],
       devilFruitUser: false,
       moves: [
-        damage('claw-swipe', 'Claw Swipe', 'beast', 18),
+        conditionalDamage('claw-swipe', 'Claw Swipe', 'beast', 18, 'actor-below-half-hp'),
         guard('thick-hide', 'Thick Hide', 'beast'),
-        debuff('predators-roar', "Predator's Roar", 'beast', 'attack'),
-        multiTarget('pounce-through', 'Pounce Through', 'beast', 8),
+        debuff('predators-roar', "Predator's Roar", 'beast', 'speed'),
+        guardBreakDamage('pounce-through', 'Pounce Through', 'beast', 22, 3, 8),
       ],
     },
   },
@@ -519,10 +602,24 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['swordsman'],
       devilFruitUser: false,
       moves: [
-        damage('acrobat-slash', 'Acrobat Slash', 'swordsman', 18),
-        guard('unicycle-evade', 'Unicycle Evade', 'swordsman'),
-        debuff('dirty-trick', 'Dirty Trick', 'poison', 'attack'),
-        multiTarget('carnival-storm', 'Carnival Storm', 'swordsman', 8),
+        conditionalDamage(
+          'acrobat-slash',
+          'Acrobat Slash',
+          'swordsman',
+          18,
+          'target-negative-effect',
+          8,
+          6,
+        ),
+        selfStat('unicycle-evade', 'Unicycle Evade', 'swordsman', 'speed'),
+        move('dirty-trick', 'Dirty Trick', 'poison', 4, 'enemy', [
+          damageEffect(8),
+          damageOverTimeEffect('bleed', 'Bleed'),
+        ]),
+        groupMove('carnival-storm', 'Carnival Storm', 'swordsman', 2, 3, [
+          damageEffect(8),
+          statEffect('carnival-storm', 'speed', -20),
+        ]),
       ],
     },
   },
@@ -543,10 +640,13 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       types: ['nature'],
       devilFruitUser: true,
       moves: [
-        damage('white-blow', 'White Blow', 'brawler', 21),
-        guard('white-out', 'White Out', 'nature'),
-        debuff('nanashaku-jitte', 'Nanashaku Jitte', 'nature', 'defense'),
-        multiTarget('smoke-snare', 'Smoke Snare', 'nature', 10),
+        conditionalDamage('white-blow', 'White Blow', 'brawler', 21, 'target-negative-effect'),
+        allyGuard('white-out', 'White Out', 'nature'),
+        guardBreakDamage('nanashaku-jitte', 'Nanashaku Jitte', 'nature', 18, 4, 8),
+        groupMove('smoke-snare', 'Smoke Snare', 'nature', 2, 3, [
+          damageEffect(8),
+          statEffect('smoke-snare', 'speed', -20),
+        ]),
       ],
     },
   },

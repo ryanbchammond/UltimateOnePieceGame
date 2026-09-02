@@ -19,56 +19,101 @@ export type FighterTypes =
   | [Element, Element]
   | [Element, Element, Element];
 
-interface BaseMove {
-  id: string;
-  name: string;
-  element: Element;
-  maxPp: number;
-}
+export type TargetMode = 'self' | 'ally' | 'enemy' | 'enemy-group';
+export type CombatStat = 'attack' | 'defense' | 'speed';
+export type DamageCondition = 'target-negative-effect' | 'target-guarding' | 'actor-below-half-hp';
 
-export interface DamageMove extends BaseMove {
+export interface DamageEffect {
   effect: 'damage';
   power: number;
+  conditionalBonus?: {
+    condition: DamageCondition;
+    power: number;
+  };
 }
 
-export interface GuardMove extends BaseMove {
+export interface GuardEffectDefinition {
   effect: 'guard';
   damageReductionPercent: number;
 }
 
-export interface StatMove extends BaseMove {
+export interface StatEffectDefinition {
   effect: 'stat';
-  target: 'self' | 'enemy';
-  stat: 'attack' | 'defense';
+  statusId: string;
+  stat: CombatStat;
   modifierPercent: number;
-  durationRounds: number;
+  durationTurns: number;
   damageTypeOverride?: Element;
 }
 
-export interface MultiTargetMove extends BaseMove {
-  effect: 'multi-target';
-  power: number;
-  maxTargets: number;
+export interface DamageOverTimeEffectDefinition {
+  effect: 'damage-over-time';
+  statusId: string;
+  statusName: string;
+  maxHpPercent: number;
+  durationTurns: number;
 }
 
-export type Move = DamageMove | GuardMove | StatMove | MultiTargetMove;
+export interface HealEffect {
+  effect: 'heal';
+  maxHpPercent: number;
+}
+
+export interface CleanseEffect {
+  effect: 'cleanse';
+}
+
+export interface RemoveGuardEffect {
+  effect: 'remove-guard';
+}
+
+export type MoveEffect =
+  | DamageEffect
+  | GuardEffectDefinition
+  | StatEffectDefinition
+  | DamageOverTimeEffectDefinition
+  | HealEffect
+  | CleanseEffect
+  | RemoveGuardEffect;
+
+export interface Move {
+  id: string;
+  name: string;
+  element: Element;
+  maxPp: number;
+  target: TargetMode;
+  maxTargets?: number;
+  effects: MoveEffect[];
+}
 
 export interface GuardEffect {
   effect: 'guard';
+  statusId: string;
   name: string;
   damageReductionPercent: number;
 }
 
 export interface StatEffect {
   effect: 'stat';
+  statusId: string;
   name: string;
-  stat: 'attack' | 'defense';
+  stat: CombatStat;
   modifierPercent: number;
-  remainingRounds: number;
+  remainingTurns: number;
+  skipNextAdvance: boolean;
   damageTypeOverride?: Element;
 }
 
-export type ActiveEffect = GuardEffect | StatEffect;
+export interface DamageOverTimeEffect {
+  effect: 'damage-over-time';
+  statusId: string;
+  name: string;
+  maxHpPercent: number;
+  remainingTurns: number;
+  skipNextAdvance: boolean;
+}
+
+export type ActiveEffect = GuardEffect | StatEffect | DamageOverTimeEffect;
 
 export interface FighterDefinition {
   id: string;

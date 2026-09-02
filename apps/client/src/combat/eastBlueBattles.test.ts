@@ -11,7 +11,6 @@ import {
 } from './engine';
 import type { CharacterId, CharacterMovePp, EncounterId } from '../run/types';
 import { createStartingRoleAssignments, crewCharacters } from '../crew/characters';
-import type { DamageMove, MultiTargetMove } from './types';
 
 function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
@@ -39,9 +38,8 @@ function playWithBasicFocusFire(
     } else {
       const focusTarget = getValidTargets(battle, actor)
         .sort((left, right) => left.hp - right.hp)[0];
-      const damagingMoves = getUsableMoves(actor).filter(
-        (move): move is DamageMove | MultiTargetMove =>
-          move.effect === 'damage' || move.effect === 'multi-target',
+      const damagingMoves = getUsableMoves(actor).filter((move) =>
+        move.effects.some((effect) => effect.effect === 'damage'),
       );
       const move = [...damagingMoves].sort(
         (left, right) =>
@@ -68,9 +66,19 @@ function playWithBasicFocusFire(
 
 describe('Story encounters', () => {
   it('gives every accessible crew character exactly four valid, distinct moves', () => {
+    const referenceEnemy = getEncounterFighters('alvida-hold', ['luffy'])
+      .find((fighter) => fighter.side === 'enemy' && fighter.id !== 'alvida')!;
     Object.values(crewCharacters).forEach((character) => {
       expect(character.fighter.moves, character.name).toHaveLength(4);
       expect(new Set(character.fighter.moves.map((move) => move.id)).size, character.name).toBe(4);
+      expect(() => createBattle([
+        {
+          ...character.fighter,
+          side: 'player',
+          slot: 0,
+        },
+        referenceEnemy,
+      ]), character.name).not.toThrow();
     });
 
     expect(() =>

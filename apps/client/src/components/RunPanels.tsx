@@ -668,17 +668,28 @@ function CharacterDetailDialog({
         <div className="character-move-grid">
           {character.fighter.moves.map((move) => {
             const remainingPp = characterMovePp?.[move.id] ?? move.maxPp;
-            const effect = move.effect === 'damage'
-              ? `${move.power} power · one enemy`
-              : move.effect === 'multi-target'
-                ? `${move.power} power · up to ${move.maxTargets} enemies`
-                : move.effect === 'guard'
-                  ? `${move.damageReductionPercent}% guard · self`
-                  : `${move.modifierPercent > 0 ? '+' : ''}${move.modifierPercent}% ${move.stat} · ${move.durationRounds} rounds${move.damageTypeOverride ? ` · attacks become ${elementLabels[move.damageTypeOverride]}` : ''}`;
+            const target = move.target === 'self'
+              ? 'self'
+              : move.target === 'ally'
+                ? 'one ally'
+                : move.target === 'enemy-group'
+                  ? `up to ${move.maxTargets} enemies`
+                  : 'one enemy';
+            const effect = move.effects.map((entry) => {
+              if (entry.effect === 'damage') return `${entry.power} power`;
+              if (entry.effect === 'guard') return `${entry.damageReductionPercent}% Guard`;
+              if (entry.effect === 'remove-guard') return 'break Guard';
+              if (entry.effect === 'heal') return `heal ${entry.maxHpPercent}% max HP`;
+              if (entry.effect === 'cleanse') return 'cleanse negative effects';
+              if (entry.effect === 'damage-over-time') {
+                return `${entry.statusName} ${entry.maxHpPercent}% for ${entry.durationTurns} turns`;
+              }
+              return `${entry.modifierPercent > 0 ? '+' : ''}${entry.modifierPercent}% ${entry.stat} · ${entry.durationTurns} turns${entry.damageTypeOverride ? ` · attacks become ${elementLabels[entry.damageTypeOverride]}` : ''}`;
+            }).join(' → ');
             return (
               <div key={move.id}>
                 <strong>{move.name}</strong>
-                <span>{elementLabels[move.element]} · {effect}</span>
+                <span>{elementLabels[move.element]} · {target} · {effect}</span>
                 <small>{remainingPp}/{move.maxPp} PP</small>
               </div>
             );

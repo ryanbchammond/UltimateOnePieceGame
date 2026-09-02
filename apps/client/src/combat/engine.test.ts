@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDemoBattle, demoFighters } from './demoBattle';
+import { getCrewCharacter, getPlayerFighters } from '../crew/characters';
 import {
   calculateDamage,
   chooseEnemyAction,
@@ -12,7 +13,7 @@ import {
   getValidTargets,
   resolveAction,
 } from './engine';
-import type { Fighter, Move } from './types';
+import type { ActiveEffect, Fighter, Move } from './types';
 
 describe('combat engine', () => {
   it('accepts variable-size story lineups up to 4v4', () => {
@@ -55,9 +56,9 @@ describe('combat engine', () => {
       id: 'water-test',
       name: 'Water Test',
       element: 'water',
-      effect: 'damage',
-      power: 15,
       maxPp: 8,
+      target: 'enemy',
+      effects: [{ effect: 'damage', power: 15 }],
     };
     expect(calculateDamage(nami, smoker, waterMove)).toBe((15 + 17 - 12) * 4);
   });
@@ -228,7 +229,7 @@ describe('combat engine', () => {
     ).not.toContainEqual(expect.objectContaining({ effect: 'guard' }));
   });
 
-  it('applies stat changes for two rounds and refreshes instead of stacking', () => {
+  it('applies stat changes for two affected turns and refreshes instead of stacking', () => {
     const initial = createDemoBattle();
     let battle = { ...initial, turnOrder: ['luffy', 'kuro'], turnIndex: 0 };
 
@@ -243,7 +244,7 @@ describe('combat engine', () => {
         effect: 'stat',
         stat: 'attack',
         modifierPercent: 20,
-        remainingRounds: 2,
+        remainingTurns: 2,
       }),
     ]);
 
@@ -255,7 +256,7 @@ describe('combat engine', () => {
     });
     luffy = battle.fighters.find((fighter) => fighter.id === 'luffy')!;
     expect(luffy.activeEffects).toHaveLength(1);
-    expect(luffy.activeEffects[0]).toEqual(expect.objectContaining({ remainingRounds: 2 }));
+    expect(luffy.activeEffects[0]).toEqual(expect.objectContaining({ remainingTurns: 2 }));
 
     const target = battle.fighters.find((fighter) => fighter.id === 'kuro')!;
     const pistol = luffy.moves.find((move) => move.id === 'pistol')!;
@@ -264,20 +265,20 @@ describe('combat engine', () => {
       calculateDamage(unbuffed, target, pistol),
     );
 
-    battle = { ...battle, turnOrder: ['kuro'], turnIndex: 0 };
+    battle = { ...battle, turnOrder: ['luffy'], turnIndex: 0 };
     battle = resolveAction(battle, {
-      actorId: 'kuro',
-      moveId: 'shakushi',
-      targetId: 'nami',
+      actorId: 'luffy',
+      moveId: 'pistol',
+      targetId: 'kuro',
     });
     expect(
       battle.fighters.find((fighter) => fighter.id === 'luffy')?.activeEffects[0],
-    ).toEqual(expect.objectContaining({ remainingRounds: 1 }));
-    battle = { ...battle, turnOrder: ['kuro'], turnIndex: 0 };
+    ).toEqual(expect.objectContaining({ remainingTurns: 1 }));
+    battle = { ...battle, turnOrder: ['luffy'], turnIndex: 0 };
     battle = resolveAction(battle, {
-      actorId: 'kuro',
-      moveId: 'shakushi',
-      targetId: 'luffy',
+      actorId: 'luffy',
+      moveId: 'pistol',
+      targetId: 'kuro',
     });
     expect(
       battle.fighters.find((fighter) => fighter.id === 'luffy')?.activeEffects,
@@ -301,7 +302,7 @@ describe('combat engine', () => {
     expect(sanji.activeEffects).toContainEqual(expect.objectContaining({
       name: 'Diable Jambe',
       damageTypeOverride: 'fire',
-      remainingRounds: 1,
+      remainingTurns: 2,
     }));
 
     const iceTarget = {
@@ -324,8 +325,334 @@ describe('combat engine', () => {
     });
     const kuro = battle.fighters.find((fighter) => fighter.id === 'kuro')!;
     expect(kuro.activeEffects).toEqual([
-      expect.objectContaining({ stat: 'defense', modifierPercent: -20, remainingRounds: 2 }),
+      expect.objectContaining({ stat: 'defense', modifierPercent: -20, remainingTurns: 2 }),
     ]);
+  });
+
+  it('heals and buffs a selected living ally without reviving defeated fighters', () => {
+    const enemy = demoFighters.find((fighter) => fighter.id === 'kuro')!;
+    const initial = createBattle([...getPlayerFighters(['coby', 'luffy']), enemy]);
+    let battle = {
+      ...initial,
+      turnOrder: ['coby', 'kuro', 'luffy'],
+      turnIndex: 0,
+      fighters: initial.fighters.map((fighter) =>
+        fighter.id === 'luffy' ? { ...fighter, hp: 60 } : fighter,
+      ),
+    };
+
+    battle = resolveAction(battle, {
+      actorId: 'coby',
+      moveId: 'rallying-resolve',
+      targetId: 'luffy',
+    });
+    const luffy = battle.fighters.find((fighter) => fighter.id === 'luffy')!;
+    expect(luffy.hp).toBe(84);
+    expect(luffy.activeEffects).toContainEqual(expect.objectContaining({
+      statusId: 'rallying-resolve',
+      stat: 'defense',
+      modifierPercent: 20,
+      remainingTurns: 2,
+    }));
+
+    const defeated = {
+      ...battle,
+      status: 'active' as const,
+      winner: null,
+      turnOrder: ['coby'],
+      turnIndex: 0,
+      fighters: battle.fighters.map((fighter) =>
+        fighter.id === 'luffy' ? { ...fighter, hp: 0 } : fighter,
+      ),
+    };
+    expect(() => resolveAction(defeated, {
+      actorId: 'coby',
+      moveId: 'rallying-resolve',
+      targetId: 'luffy',
+    })).toThrow(/living fighter/);
+  });
+
+  it('applies Speed changes only when the next round order is built', () => {
+    const initial = createDemoBattle();
+    let battle = { ...initial, turnOrder: ['nami', 'luffy'], turnIndex: 0 };
+
+    battle = resolveAction(battle, {
+      actorId: 'nami',
+      moveId: 'cyclone-tempo',
+      targetId: 'kuro',
+    });
+    expect(battle.turnOrder).toEqual(['nami', 'luffy']);
+    expect(getCurrentFighter(battle)?.id).toBe('luffy');
+
+    battle = resolveAction(battle, {
+      actorId: 'luffy',
+      moveId: 'pistol',
+      targetId: 'kuro',
+    });
+    expect(battle.round).toBe(2);
+    expect(battle.turnOrder.indexOf('kuro')).toBeGreaterThan(battle.turnOrder.indexOf('zoro'));
+    expect(battle.fighters.find((fighter) => fighter.id === 'kuro')?.activeEffects)
+      .toContainEqual(expect.objectContaining({ stat: 'speed', modifierPercent: -20 }));
+  });
+
+  it('ticks, refreshes, and expires damage over time after the affected fighter acts', () => {
+    const initial = createDemoBattle();
+    let battle = { ...initial, turnOrder: ['buggy', 'luffy'], turnIndex: 0 };
+
+    battle = resolveAction(battle, {
+      actorId: 'buggy',
+      moveId: 'buggy-ball',
+      targetId: 'luffy',
+    });
+    let luffy = battle.fighters.find((fighter) => fighter.id === 'luffy')!;
+    const hpAfterHit = luffy.hp;
+    expect(luffy.activeEffects).toContainEqual(expect.objectContaining({
+      statusId: 'burn',
+      remainingTurns: 2,
+    }));
+
+    battle = resolveAction(battle, {
+      actorId: 'luffy',
+      moveId: 'pistol',
+      targetId: 'kuro',
+    });
+    luffy = battle.fighters.find((fighter) => fighter.id === 'luffy')!;
+    expect(luffy.hp).toBe(hpAfterHit - 6);
+    expect(luffy.activeEffects).toContainEqual(expect.objectContaining({
+      statusId: 'burn',
+      remainingTurns: 1,
+    }));
+
+    battle = { ...battle, status: 'active', winner: null, turnOrder: ['buggy'], turnIndex: 0 };
+    battle = resolveAction(battle, {
+      actorId: 'buggy',
+      moveId: 'buggy-ball',
+      targetId: 'luffy',
+    });
+    expect(battle.fighters.find((fighter) => fighter.id === 'luffy')?.activeEffects
+      .filter((effect) => effect.statusId === 'burn')).toEqual([
+      expect.objectContaining({ remainingTurns: 2 }),
+    ]);
+  });
+
+  it('settles direct victory before an acting fighter takes a lethal DoT tick', () => {
+    const player = getPlayerFighters(['luffy'])[0];
+    const enemy = demoFighters.find((fighter) => fighter.id === 'kuro')!;
+    const initial = createBattle([player, enemy]);
+    const burn: ActiveEffect = {
+      effect: 'damage-over-time',
+      statusId: 'burn',
+      name: 'Burn',
+      maxHpPercent: 5,
+      remainingTurns: 1,
+      skipNextAdvance: false,
+    };
+    const battle = {
+      ...initial,
+      turnOrder: ['luffy'],
+      turnIndex: 0,
+      fighters: initial.fighters.map((fighter) =>
+        fighter.id === 'luffy'
+          ? { ...fighter, hp: 5, activeEffects: [burn] }
+          : { ...fighter, hp: 1 },
+      ),
+    };
+
+    const result = resolveAction(battle, {
+      actorId: 'luffy',
+      moveId: 'pistol',
+      targetId: 'kuro',
+    });
+    expect(result.status).toBe('victory');
+    expect(result.fighters.find((fighter) => fighter.id === 'luffy')?.hp).toBe(5);
+
+    const survivingEnemyBattle = {
+      ...battle,
+      fighters: battle.fighters.map((fighter) =>
+        fighter.id === 'kuro' ? { ...fighter, hp: fighter.maxHp } : fighter,
+      ),
+    };
+    const defeated = resolveAction(survivingEnemyBattle, {
+      actorId: 'luffy',
+      moveId: 'pistol',
+      targetId: 'kuro',
+    });
+    expect(defeated.status).toBe('defeat');
+    expect(defeated.fighters.find((fighter) => fighter.id === 'luffy')?.hp).toBe(0);
+  });
+
+  it('allows differently named DoT statuses to coexist without stacking duplicate IDs', () => {
+    const initial = createBattle([
+      getPlayerFighters(['luffy'])[0],
+      demoFighters.find((fighter) => fighter.id === 'kuro')!,
+    ]);
+    const dots: ActiveEffect[] = ['burn', 'bleed'].map((statusId) => ({
+      effect: 'damage-over-time',
+      statusId,
+      name: statusId,
+      maxHpPercent: 5,
+      remainingTurns: 2,
+      skipNextAdvance: false,
+    }));
+    const battle = {
+      ...initial,
+      turnOrder: ['luffy'],
+      turnIndex: 0,
+      fighters: initial.fighters.map((fighter) =>
+        fighter.id === 'luffy' ? { ...fighter, activeEffects: dots } : fighter,
+      ),
+    };
+    const result = resolveAction(battle, {
+      actorId: 'luffy',
+      moveId: 'pistol',
+      targetId: 'kuro',
+    });
+    expect(result.fighters.find((fighter) => fighter.id === 'luffy')?.hp).toBe(108);
+    expect(result.fighters.find((fighter) => fighter.id === 'luffy')?.activeEffects)
+      .toEqual([
+        expect.objectContaining({ statusId: 'burn', remainingTurns: 1 }),
+        expect.objectContaining({ statusId: 'bleed', remainingTurns: 1 }),
+      ]);
+  });
+
+  it('cleanses all negative statuses while preserving Guard and positive effects', () => {
+    const enemy = demoFighters.find((fighter) => fighter.id === 'kuro')!;
+    const initial = createBattle([...getPlayerFighters(['tashigi', 'luffy']), enemy]);
+    const statuses: ActiveEffect[] = [
+      {
+        effect: 'guard',
+        statusId: 'brace',
+        name: 'Brace',
+        damageReductionPercent: 40,
+      },
+      {
+        effect: 'stat',
+        statusId: 'positive',
+        name: 'Positive',
+        stat: 'attack',
+        modifierPercent: 20,
+        remainingTurns: 2,
+        skipNextAdvance: false,
+      },
+      {
+        effect: 'stat',
+        statusId: 'negative',
+        name: 'Negative',
+        stat: 'defense',
+        modifierPercent: -20,
+        remainingTurns: 2,
+        skipNextAdvance: false,
+      },
+      {
+        effect: 'damage-over-time',
+        statusId: 'burn',
+        name: 'Burn',
+        maxHpPercent: 5,
+        remainingTurns: 2,
+        skipNextAdvance: false,
+      },
+    ];
+    const battle = {
+      ...initial,
+      turnOrder: ['tashigi'],
+      turnIndex: 0,
+      fighters: initial.fighters.map((fighter) =>
+        fighter.id === 'luffy' ? { ...fighter, activeEffects: statuses } : fighter,
+      ),
+    };
+
+    const result = resolveAction(battle, {
+      actorId: 'tashigi',
+      moveId: 'sword-collector-stance',
+      targetId: 'luffy',
+    });
+    expect(result.fighters.find((fighter) => fighter.id === 'luffy')?.activeEffects
+      .map((effect) => effect.statusId)).toEqual(['brace', 'positive']);
+  });
+
+  it('removes Guard before damage and evaluates the guarding bonus from the action snapshot', () => {
+    const initial = createBattle([
+      getPlayerFighters(['alvida'])[0],
+      demoFighters.find((fighter) => fighter.id === 'kuro')!,
+    ]);
+    const alvida = initial.fighters.find((fighter) => fighter.id === 'alvida')!;
+    const target = initial.fighters.find((fighter) => fighter.id === 'kuro')!;
+    const guarded = {
+      ...target,
+      activeEffects: [{
+        effect: 'guard' as const,
+        statusId: 'test-guard',
+        name: 'Test Guard',
+        damageReductionPercent: 40,
+      }],
+    };
+    const ironMace = alvida.moves.find((selectedMove) => selectedMove.id === 'iron-mace')!;
+    expect(calculateDamage(alvida, guarded, ironMace)).toBeGreaterThan(
+      calculateDamage(alvida, target, ironMace),
+    );
+
+    const battle = {
+      ...initial,
+      turnOrder: ['alvida'],
+      turnIndex: 0,
+      fighters: initial.fighters.map((fighter) => fighter.id === 'kuro' ? guarded : fighter),
+    };
+    const result = resolveAction(battle, {
+      actorId: 'alvida',
+      moveId: 'iron-mace',
+      targetId: 'kuro',
+    });
+    expect(result.fighters.find((fighter) => fighter.id === 'kuro')?.activeEffects)
+      .not.toContainEqual(expect.objectContaining({ effect: 'guard' }));
+  });
+
+  it('clamps combined stat modifiers to forty percent', () => {
+    const initial = createDemoBattle();
+    const luffy = initial.fighters.find((fighter) => fighter.id === 'luffy')!;
+    const target = initial.fighters.find((fighter) => fighter.id === 'kuro')!;
+    const pistol = luffy.moves.find((selectedMove) => selectedMove.id === 'pistol')!;
+    const buffs = ['one', 'two', 'three'].map((statusId): ActiveEffect => ({
+      effect: 'stat',
+      statusId,
+      name: statusId,
+      stat: 'attack',
+      modifierPercent: 20,
+      remainingTurns: 2,
+      skipNextAdvance: false,
+    }));
+    expect(calculateDamage({ ...luffy, activeEffects: buffs }, target, pistol)).toBe(
+      calculateDamage({ ...luffy, activeEffects: buffs.slice(0, 2) }, target, pistol),
+    );
+  });
+
+  it('lets Battle IQ choose meaningful healing for a wounded ally', () => {
+    const players = getPlayerFighters(['luffy']);
+    const coby = {
+      ...getCrewCharacter('coby').fighter,
+      side: 'enemy' as const,
+      slot: 0,
+      battleIq: 100,
+    };
+    const alvida = {
+      ...getCrewCharacter('alvida').fighter,
+      side: 'enemy' as const,
+      slot: 1,
+      battleIq: 45,
+    };
+    const initial = createBattle([...players, coby, alvida]);
+    const battle = {
+      ...initial,
+      turnOrder: ['coby'],
+      turnIndex: 0,
+      fighters: initial.fighters.map((fighter) =>
+        fighter.id === 'alvida' ? { ...fighter, hp: 20 } : fighter,
+      ),
+    };
+    expect(chooseEnemyAction(battle, () => 0)).toEqual({
+      actorId: 'coby',
+      moveId: 'rallying-resolve',
+      targetId: 'alvida',
+    });
   });
 
   it('hits up to the authored target cap, keeps the selected target primary, and works with fewer survivors', () => {
@@ -421,9 +748,9 @@ describe('combat engine', () => {
       id: 'broken-guard',
       name: 'Broken Guard',
       element: 'brawler',
-      effect: 'guard',
-      damageReductionPercent: 100,
       maxPp: 6,
+      target: 'self',
+      effects: [{ effect: 'guard', damageReductionPercent: 100 }],
     };
     expect(() => createBattle(definitions)).toThrow(/damage reduction/);
 
@@ -431,12 +758,15 @@ describe('combat engine', () => {
       id: 'broken-buff',
       name: 'Broken Buff',
       element: 'brawler',
-      effect: 'stat',
       target: 'self',
-      stat: 'attack',
-      modifierPercent: -20,
-      durationRounds: 2,
       maxPp: 5,
+      effects: [{
+        effect: 'stat',
+        statusId: 'broken-buff',
+        stat: 'attack',
+        modifierPercent: -20,
+        durationTurns: 2,
+      }],
     };
     expect(() => createBattle(definitions)).toThrow(/invalid stat-effect/);
 
@@ -445,6 +775,32 @@ describe('combat engine', () => {
       maxPp: 0,
     };
     expect(() => createBattle(definitions)).toThrow(/PP limit/);
+
+    definitions[0].moves[0] = {
+      id: 'broken-dot',
+      name: 'Broken DoT',
+      element: 'fire',
+      maxPp: 4,
+      target: 'ally',
+      effects: [{
+        effect: 'damage-over-time',
+        statusId: 'burn',
+        statusName: 'Burn',
+        maxHpPercent: 5,
+        durationTurns: 2,
+      }],
+    };
+    expect(() => createBattle(definitions)).toThrow(/damage-over-time/);
+
+    definitions[0].moves[0] = {
+      id: 'broken-group',
+      name: 'Broken Group',
+      element: 'brawler',
+      maxPp: 3,
+      target: 'enemy-group',
+      effects: [{ effect: 'damage', power: 5 }],
+    };
+    expect(() => createBattle(definitions)).toThrow(/target cap/);
 
     const invalidIq = demoFighters.map((fighter) => ({ ...fighter }));
     invalidIq.find((fighter) => fighter.side === 'enemy')!.battleIq = 101;

@@ -55,7 +55,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
   selectTarget: (fighterId) => {
     const { battle } = get();
     const target = battle.fighters.find(
-      (fighter) => fighter.id === fighterId && fighter.side === 'enemy' && fighter.hp > 0,
+      (fighter) => fighter.id === fighterId && fighter.hp > 0,
     );
     if (target) set({ selectedTargetId: target.id });
   },
@@ -68,7 +68,11 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
     const move = getUsableMoves(actor).find((candidate) => candidate.id === moveId);
     if (!move) return;
     const targets = getValidTargets(battle, actor, move);
-    const target = targets.find((fighter) => fighter.id === selectedTargetId) ?? targets[0];
+    const selectedFighter = battle.fighters.find((fighter) => fighter.id === selectedTargetId);
+    const target = move.target === 'self'
+      ? actor
+      : targets.find((fighter) => fighter.id === selectedTargetId) ??
+        (selectedFighter?.hp === 0 ? targets[0] : undefined);
     if (!target) return;
 
     const nextBattle = resolveAction(battle, {
@@ -99,18 +103,27 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
     set({
       battle: nextBattle,
       characterMovePp: nextCharacterMovePp,
-      selectedTargetId:
-        nextBattle.fighters.find((fighter) => fighter.id === target.id)?.hp === 0
-          ? firstLivingEnemy(nextBattle)
-          : target.id,
+      selectedTargetId: nextBattle.fighters.find(
+        (fighter) => fighter.id === selectedTargetId && fighter.hp > 0,
+      )
+        ? selectedTargetId
+        : firstLivingEnemy(nextBattle),
     });
   },
 
   takeEnemyTurn: () => {
-    const { battle } = get();
+    const { battle, selectedTargetId } = get();
     const actor = getCurrentFighter(battle);
     if (!actor || actor.side !== 'enemy') return;
-    set({ battle: resolveAction(battle, chooseEnemyAction(battle)) });
+    const nextBattle = resolveAction(battle, chooseEnemyAction(battle));
+    set({
+      battle: nextBattle,
+      selectedTargetId: nextBattle.fighters.find(
+        (fighter) => fighter.id === selectedTargetId && fighter.hp > 0,
+      )
+        ? selectedTargetId
+        : firstLivingEnemy(nextBattle),
+    });
   },
 
   startEncounter: (

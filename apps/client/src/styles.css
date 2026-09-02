@@ -2235,6 +2235,13 @@ h1 {
   white-space: nowrap;
 }
 
+.target-list strong small {
+  color: #7895a6;
+  font-size: 0.52rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
 .target-list b {
   flex: none;
   color: #9eb5c3;

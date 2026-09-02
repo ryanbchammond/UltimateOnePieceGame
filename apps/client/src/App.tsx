@@ -15,6 +15,7 @@ import {
 import { PhaserCanvas } from './game/PhaserCanvas';
 import { activePartyHasCapability, shouldRevealBattleIq } from './crew/capabilities';
 import { isBattleEncounterLoaded } from './run/battleFlow';
+import { shouldShowVoyageNavigation } from './run/navigation';
 import { getStoryNode } from './run/storyContent';
 import { useBattleStore } from './store/battleStore';
 import { useGameSession } from './store/gameSession';
@@ -54,6 +55,8 @@ export function App() {
     import.meta.env.DEV,
     activePartyHasCapability(activePartyIds, 'observation-haki'),
   );
+  const combatScreenVisible = runPhase === 'battle' && encounterLoaded;
+  const showVoyageNavigation = shouldShowVoyageNavigation(runPhase, encounterLoaded);
 
   const beginEncounter = () => {
     if (!currentNode?.encounterId) return;
@@ -112,7 +115,40 @@ export function App() {
       ) : (
         <>
           <RunStatus />
-          {rewardPending ? (
+          {showVoyageNavigation && (
+            <nav className="voyage-navigation" aria-label="Voyage screens">
+              {([
+                ['map', 'Map'],
+                ['roster', 'Battle Party'],
+                ['crew', 'Ship Crew'],
+              ] as Array<[VoyageScreen, string]>).map(([screen, label]) => (
+                <button
+                  aria-current={voyageScreen === screen ? 'page' : undefined}
+                  onClick={() => setVoyageScreen(screen)}
+                  type="button"
+                  key={screen}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          )}
+          {combatScreenVisible ? (
+            <BattleHud
+              battlefield={(
+                <section className="game-frame battle-frame" aria-label="Battlefield">
+                  <PhaserCanvas view="battle" />
+                </section>
+              )}
+              onDefeat={() => resolveBattle('defeat')}
+              onVictory={() => resolveBattle('victory')}
+              revealBattleIq={revealBattleIq}
+            />
+          ) : voyageScreen === 'roster' ? (
+            <CrewManager view="roster" />
+          ) : voyageScreen === 'crew' ? (
+            <CrewManager view="roles" />
+          ) : rewardPending ? (
             <RewardOutcomeScreen />
           ) : pendingPack ? (
             <PackOpeningScreen />
@@ -122,56 +158,19 @@ export function App() {
               {canAssignRoles && <CrewManager view="roles" />}
             </>
           ) : runPhase === 'battle' ? (
-            encounterLoaded ? (
-              <BattleHud
-                battlefield={(
-                  <section className="game-frame battle-frame" aria-label="Battlefield">
-                    <PhaserCanvas view="battle" />
-                  </section>
-                )}
-                onDefeat={() => resolveBattle('defeat')}
-                onVictory={() => resolveBattle('victory')}
-                revealBattleIq={revealBattleIq}
-              />
-            ) : (
-              <BattlePreparation onStart={beginEncounter} />
-            )
+            <BattlePreparation onStart={beginEncounter} />
           ) : runPhase === 'victory' ? (
             <>
               <VictoryPanel onRestart={restartVoyage} />
               {canAssignRoles && <CrewManager view="roles" />}
             </>
           ) : (
-            <>
-              <nav className="voyage-navigation" aria-label="Voyage screens">
-                {([
-                  ['map', 'Map'],
-                  ['roster', 'Battle Party'],
-                  ['crew', 'Ship Crew'],
-                ] as Array<[VoyageScreen, string]>).map(([screen, label]) => (
-                  <button
-                    aria-current={voyageScreen === screen ? 'page' : undefined}
-                    onClick={() => setVoyageScreen(screen)}
-                    type="button"
-                    key={screen}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
-              {voyageScreen === 'map' ? (
-                <section className="play-workspace map-workspace">
-                  <section className="game-frame" aria-label="Ocean map">
-                    <PhaserCanvas view="map" />
-                  </section>
-                  <div className="workspace-context"><VoyagePanel /></div>
-                </section>
-              ) : voyageScreen === 'roster' ? (
-                <CrewManager view="roster" />
-              ) : (
-                <CrewManager view="roles" />
-              )}
-            </>
+            <section className="play-workspace map-workspace">
+              <section className="game-frame" aria-label="Ocean map">
+                <PhaserCanvas view="map" />
+              </section>
+              <div className="workspace-context"><VoyagePanel /></div>
+            </section>
           )}
         </>
       )}

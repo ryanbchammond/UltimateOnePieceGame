@@ -32,7 +32,7 @@ describe('battle store', () => {
     expect(state.selectedTargetId).toBe('arlong');
   });
 
-  it('selects only living enemies through the shared battlefield target action', () => {
+  it('selects any living fighter through the shared battlefield target action', () => {
     const initial = createDemoBattle();
     const battle = {
       ...initial,
@@ -49,10 +49,10 @@ describe('battle store', () => {
     expect(useBattleStore.getState().selectedTargetId).toBe('smoker');
 
     useBattleStore.getState().selectTarget('luffy');
-    expect(useBattleStore.getState().selectedTargetId).toBe('smoker');
+    expect(useBattleStore.getState().selectedTargetId).toBe('luffy');
 
     useBattleStore.getState().selectTarget('missing');
-    expect(useBattleStore.getState().selectedTargetId).toBe('smoker');
+    expect(useBattleStore.getState().selectedTargetId).toBe('luffy');
   });
 
   it('falls back after a multi-target move defeats the selected enemy', () => {
@@ -76,6 +76,38 @@ describe('battle store', () => {
       arlongBefore,
     );
     expect(state.selectedTargetId).toBe('arlong');
+  });
+
+  it('uses a selected ally for support and refuses an incompatible enemy move target', () => {
+    const initial = createDemoBattle();
+    const battle = {
+      ...initial,
+      turnOrder: ['luffy'],
+      turnIndex: 0,
+    };
+    useBattleStore.setState({ battle, selectedTargetId: 'nami' });
+
+    useBattleStore.getState().useMove('battle-cry');
+    let state = useBattleStore.getState();
+    expect(state.battle.fighters.find((fighter) => fighter.id === 'nami')?.activeEffects)
+      .toContainEqual(expect.objectContaining({ statusId: 'battle-cry', stat: 'attack' }));
+
+    useBattleStore.setState({
+      battle: { ...state.battle, status: 'active', winner: null, turnOrder: ['luffy'], turnIndex: 0 },
+      selectedTargetId: 'nami',
+    });
+    const kuroHp = useBattleStore.getState().battle.fighters.find(
+      (fighter) => fighter.id === 'kuro',
+    )!.hp;
+    const pistolPp = useBattleStore.getState().battle.fighters.find(
+      (fighter) => fighter.id === 'luffy',
+    )!.movePp.pistol;
+
+    useBattleStore.getState().useMove('pistol');
+    state = useBattleStore.getState();
+    expect(state.battle.fighters.find((fighter) => fighter.id === 'kuro')?.hp).toBe(kuroHp);
+    expect(state.battle.fighters.find((fighter) => fighter.id === 'luffy')?.movePp.pistol)
+      .toBe(pistolPp);
   });
 
   it('restarts a completed battle with full health and initial targeting', () => {

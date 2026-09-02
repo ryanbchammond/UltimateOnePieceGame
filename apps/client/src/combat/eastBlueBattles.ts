@@ -1,40 +1,99 @@
-import type { Element, FighterDefinition, Move } from './types';
+import type {
+  CombatStat,
+  DamageCondition,
+  Element,
+  FighterDefinition,
+  Move,
+  MoveEffect,
+} from './types';
+import {
+  cleanseEffect,
+  damageEffect,
+  damageOverTimeEffect,
+  directDamage,
+  enemyStat,
+  groupDamage,
+  guardEffect,
+  healEffect,
+  move,
+  removeGuardEffect,
+  selfGuard,
+  selfStat,
+  statEffect,
+} from './moves';
 import { getCrewCharacter, getPlayerFighters, startingActivePartyIds } from '../crew/characters';
 import { getCookMaxHpBonusPercent } from '../crew/roleEffects';
 import type { CharacterId, CharacterMovePp, EncounterId, RoleAssignments } from '../run/types';
 
-const damage = (id: string, name: string, element: Element, power: number): Move => ({
-  id, name, element, effect: 'damage', power, maxPp: 8,
-});
-const guard = (id: string, name: string, element: Element): Move => ({
-  id, name, element, effect: 'guard', damageReductionPercent: 40, maxPp: 6,
-});
+const damage = (id: string, name: string, element: Element, power: number): Move =>
+  directDamage(id, name, element, power);
+const guard = (id: string, name: string, element: Element): Move =>
+  selfGuard(id, name, element);
 const stat = (
   id: string,
   name: string,
   element: Element,
   target: 'self' | 'enemy',
-  affectedStat: 'attack' | 'defense',
-): Move => ({
-  id,
-  name,
-  element,
-  effect: 'stat',
-  target,
-  stat: affectedStat,
-  modifierPercent: target === 'self' ? 20 : -20,
-  durationRounds: 2,
-  maxPp: 5,
-});
+  affectedStat: CombatStat,
+): Move => target === 'self'
+  ? selfStat(id, name, element, affectedStat)
+  : enemyStat(id, name, element, affectedStat);
 const multiTarget = (
   id: string,
   name: string,
   element: Element,
   power: number,
   maxTargets = 2,
-): Move => ({
-  id, name, element, effect: 'multi-target', power, maxTargets, maxPp: 3,
-});
+): Move => groupDamage(id, name, element, power, maxTargets);
+
+const conditionalDamage = (
+  id: string,
+  name: string,
+  element: Element,
+  power: number,
+  condition: DamageCondition,
+  bonusPower = 8,
+  maxPp = 8,
+): Move => move(id, name, element, maxPp, 'enemy', [
+  damageEffect(power, { condition, power: bonusPower }),
+]);
+
+const allyGuard = (id: string, name: string, element: Element, maxPp = 6): Move =>
+  move(id, name, element, maxPp, 'ally', [guardEffect()]);
+
+const allyStat = (
+  id: string,
+  name: string,
+  element: Element,
+  affectedStat: CombatStat,
+  maxPp = 5,
+): Move => move(id, name, element, maxPp, 'ally', [
+  statEffect(id, affectedStat, 20),
+]);
+
+const guardBreakDamage = (
+  id: string,
+  name: string,
+  element: Element,
+  power: number,
+  maxPp: number,
+  guardedBonus = 0,
+): Move => move(id, name, element, maxPp, 'enemy', [
+  removeGuardEffect(),
+  damageEffect(
+    power,
+    guardedBonus > 0 ? { condition: 'target-guarding', power: guardedBonus } : undefined,
+  ),
+]);
+
+const groupMove = (
+  id: string,
+  name: string,
+  element: Element,
+  maxTargets: number,
+  maxPp: number,
+  effects: MoveEffect[],
+): Move => move(id, name, element, maxPp, 'enemy-group', effects, { maxTargets });
 
 function createCrewEnemy(
   characterId: CharacterId,
@@ -72,16 +131,26 @@ function createOrangePirate(
     battleIq: 20,
     moves: acrobat
       ? [
-          damage(`${id}-roof-slash`, 'Roof Slash', 'swordsman', 11),
-          guard(`${id}-tumble`, 'Tumble Away', 'brawler'),
-          stat(`${id}-sand-toss`, 'Sand Toss', 'poison', 'enemy', 'attack'),
+          conditionalDamage(
+            `${id}-roof-slash`,
+            'Roof Slash',
+            'swordsman',
+            11,
+            'target-negative-effect',
+            6,
+            6,
+          ),
+          selfStat(`${id}-tumble`, 'Tumble Away', 'brawler', 'speed'),
+          stat(`${id}-sand-toss`, 'Sand Toss', 'poison', 'enemy', 'speed'),
           multiTarget(`${id}-crossfire`, 'Acrobat Crossfire', 'sniper', 4),
         ]
       : [
           damage(`${id}-hook-swing`, 'Hook Swing', 'beast', 11),
-          guard(`${id}-cage-cover`, 'Cage Cover', 'earth'),
-          stat(`${id}-crack-whip`, 'Crack the Whip', 'beast', 'self', 'attack'),
-          multiTarget(`${id}-animal-rush`, 'Animal Rush', 'beast', 4),
+          allyGuard(`${id}-cage-cover`, 'Cage Cover', 'earth'),
+          allyStat(`${id}-crack-whip`, 'Crack the Whip', 'beast', 'attack'),
+          groupMove(`${id}-animal-rush`, 'Animal Rush', 'beast', 2, 3, [
+            damageEffect(4, { condition: 'target-negative-effect', power: 4 }),
+          ]),
         ],
   };
 }
@@ -108,7 +177,9 @@ function createAlvidaPirate(
       damage(`${id}-club-swing`, 'Club Swing', 'brawler', 7),
       guard(`${id}-duck`, 'Duck Behind a Crate', 'brawler'),
       stat(`${id}-bully`, 'Bully', 'brawler', 'enemy', 'defense'),
-      multiTarget(`${id}-mob-rush`, 'Mob Rush', 'brawler', 3),
+      groupMove(`${id}-mob-rush`, 'Mob Rush', 'brawler', 2, 3, [
+        damageEffect(3, { condition: 'target-negative-effect', power: 4 }),
+      ]),
     ],
   };
 }
@@ -137,9 +208,9 @@ const commanderRipper: FighterDefinition = {
   devilFruitUser: false,
   battleIq: 55,
   moves: [
-    damage('saber-rush', 'Saber Rush', 'swordsman', 17),
-    guard('marine-formation', 'Marine Formation', 'swordsman'),
-    stat('commanding-shout', 'Commanding Shout', 'brawler', 'self', 'defense'),
+    guardBreakDamage('saber-rush', 'Saber Rush', 'swordsman', 17, 5, 8),
+    allyGuard('marine-formation', 'Marine Formation', 'swordsman'),
+    allyStat('commanding-shout', 'Commanding Shout', 'brawler', 'defense'),
     multiTarget('saber-line', 'Saber Line', 'swordsman', 7),
   ],
 };
@@ -157,10 +228,13 @@ const marineGunner: FighterDefinition = {
   devilFruitUser: false,
   battleIq: 40,
   moves: [
-    damage('rifle-volley', 'Rifle Volley', 'sniper', 18),
+    conditionalDamage('rifle-volley', 'Rifle Volley', 'sniper', 18, 'target-negative-effect', 8, 6),
     guard('take-cover', 'Take Cover', 'sniper'),
-    stat('warning-shot', 'Warning Shot', 'sniper', 'enemy', 'attack'),
-    multiTarget('powder-volley', 'Powder Volley', 'fire', 7),
+    stat('warning-shot', 'Warning Shot', 'sniper', 'enemy', 'speed'),
+    move('powder-volley', 'Powder Volley', 'fire', 4, 'enemy', [
+      damageEffect(8),
+      damageOverTimeEffect('burn', 'Burn'),
+    ]),
   ],
 };
 
@@ -178,8 +252,8 @@ const marineGuard: FighterDefinition = {
   battleIq: 30,
   moves: [
     damage('guard-saber', 'Guard Saber', 'swordsman', 12),
-    guard('hold-formation', 'Hold Formation', 'swordsman'),
-    stat('steady-ranks', 'Steady Ranks', 'brawler', 'self', 'defense'),
+    allyGuard('hold-formation', 'Hold Formation', 'swordsman'),
+    allyStat('steady-ranks', 'Steady Ranks', 'brawler', 'defense'),
     multiTarget('crossing-slash', 'Crossing Slash', 'swordsman', 4),
   ],
 };
@@ -197,7 +271,7 @@ const marineRecruit: FighterDefinition = {
   devilFruitUser: false,
   battleIq: 20,
   moves: [
-    damage('recruit-strike', 'Recruit Strike', 'brawler', 10),
+    conditionalDamage('recruit-strike', 'Recruit Strike', 'brawler', 10, 'actor-below-half-hp'),
     guard('nervous-guard', 'Nervous Guard', 'brawler'),
     stat('shouted-warning', 'Shouted Warning', 'brawler', 'enemy', 'defense'),
     multiTarget('rushed-volley', 'Rushed Volley', 'sniper', 3),
@@ -222,10 +296,14 @@ function tuneLineup(
     ...fighter,
     maxHp: Math.round(fighter.maxHp * hpMultiplier),
     attack: Math.round(fighter.attack * attackMultiplier),
-    moves: fighter.moves.map((move): Move =>
-      move.effect === 'damage' || move.effect === 'multi-target'
-        ? { ...move, power: Math.max(1, Math.round(move.power * powerMultiplier)) }
-        : { ...move }),
+    moves: fighter.moves.map((move): Move => ({
+      ...move,
+      effects: move.effects.map((effect) =>
+        effect.effect === 'damage'
+          ? { ...effect, power: Math.max(1, Math.round(effect.power * powerMultiplier)) }
+          : { ...effect },
+      ),
+    })),
   }));
 }
 
@@ -305,10 +383,13 @@ const arlongPirates: FighterDefinition[] = [
     devilFruitUser: false,
     battleIq: 50,
     moves: [
-      damage('shark-darts', 'Shark on Darts', 'water', 23),
+      conditionalDamage('shark-darts', 'Shark on Darts', 'water', 23, 'actor-below-half-hp', 8, 6),
       guard('shark-hide', 'Shark Hide', 'beast'),
       stat('terror-of-the-sea', 'Terror of the Sea', 'water', 'enemy', 'attack'),
-      multiTarget('tooth-storm', 'Tooth Storm', 'beast', 11),
+      groupMove('tooth-storm', 'Tooth Storm', 'beast', 3, 3, [
+        damageEffect(10),
+        damageOverTimeEffect('bleed', 'Bleed'),
+      ]),
     ],
   },
   {
@@ -324,9 +405,12 @@ const arlongPirates: FighterDefinition[] = [
     devilFruitUser: false,
     battleIq: 35,
     moves: [
-      damage('fishman-karate', 'Fish-Man Karate', 'water', 20),
+      guardBreakDamage('fishman-karate', 'Fish-Man Karate', 'water', 20, 5, 8),
       guard('karate-stance', 'Karate Stance', 'brawler'),
-      stat('ocean-discipline', 'Ocean Discipline', 'water', 'self', 'defense'),
+      move('ocean-discipline', 'Ocean Discipline', 'water', 4, 'self', [
+        cleanseEffect(),
+        statEffect('ocean-discipline', 'defense', 20),
+      ]),
       multiTarget('thousand-brick-fist', 'Thousand Brick Fist', 'brawler', 10),
     ],
   },
@@ -344,9 +428,9 @@ const arlongPirates: FighterDefinition[] = [
     battleIq: 30,
     moves: [
       damage('octopus-punch', 'Octopus Punch', 'brawler', 18),
-      guard('six-sword-guard', 'Six-Sword Guard', 'swordsman'),
+      allyGuard('six-sword-guard', 'Six-Sword Guard', 'swordsman'),
       stat('octopus-focus', 'Octopus Focus', 'beast', 'self', 'attack'),
-      multiTarget('six-sword-waltz', 'Six-Sword Waltz', 'swordsman', 10),
+      multiTarget('six-sword-waltz', 'Six-Sword Waltz', 'swordsman', 10, 3),
     ],
   },
   {
@@ -362,8 +446,8 @@ const arlongPirates: FighterDefinition[] = [
     devilFruitUser: false,
     battleIq: 25,
     moves: [
-      damage('water-cannon', 'Water Cannon', 'water', 21),
-      guard('deep-breath', 'Deep Breath', 'water'),
+      conditionalDamage('water-cannon', 'Water Cannon', 'water', 21, 'target-negative-effect', 8, 6),
+      move('deep-breath', 'Deep Breath', 'water', 3, 'self', [healEffect()]),
       stat('pressure-spray', 'Pressure Spray', 'water', 'enemy', 'defense'),
       multiTarget('water-shot', 'Water Shot', 'sniper', 9),
     ],
