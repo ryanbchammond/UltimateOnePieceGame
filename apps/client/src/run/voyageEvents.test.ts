@@ -20,6 +20,10 @@ describe('voyage event deck', () => {
       .toEqual({ context: 'alvida-ship', minEvents: 0, maxEvents: 2 });
     expect(getStoryTravelRule('alvida-deck', 'cobys-resolve'))
       .toEqual({ context: 'immediate', minEvents: 0, maxEvents: 0 });
+    expect(getStoryTravelRule('maps-and-promises', 'syrup-village-shore'))
+      .toEqual({ context: 'open-sea', minEvents: 1, maxEvents: 3 });
+    expect(getStoryTravelRule('syrup-village-shore', 'usopps-warning'))
+      .toEqual({ context: 'syrup-village', minEvents: 0, maxEvents: 2 });
   });
   it('draws and persists a random one-to-three unique events for a leg', () => {
     const one = createVoyageLeg({
@@ -90,7 +94,7 @@ describe('voyage event deck', () => {
     expect(getWantedPressure(6000)).toBe('high');
   });
 
-  it.each(['romance-dawn', 'orange-town', 'east-blue-prototype'] as const)(
+  it.each(['romance-dawn', 'orange-town', 'syrup-village', 'east-blue-prototype'] as const)(
     'gives %s every voyage family and a no-cost fallback for non-battles',
     (arcId) => {
       const events = Object.values(voyageEventDefinitions)
@@ -108,4 +112,20 @@ describe('voyage event deck', () => {
       });
     },
   );
+
+  it('draws only Syrup Village-themed local interruptions', () => {
+    const leg = createVoyageLeg({
+      activeArcId: 'syrup-village',
+      bounty: 12_000,
+      currentNodeId: 'syrup-village-shore',
+      voyageEventHistory: [],
+    }, 'usopps-warning', sequenceRandom([0.999, 0, 0]), {
+      context: 'syrup-village', minEvents: 0, maxEvents: 2,
+    });
+    expect(leg.eventIds).toHaveLength(2);
+    expect(leg.eventIds.every((id) => {
+      const event = getVoyageEvent(id);
+      return event.arcIds.includes('syrup-village') && event.contexts.includes('syrup-village');
+    })).toBe(true);
+  });
 });

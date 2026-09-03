@@ -307,7 +307,7 @@ export const orangeTownChoices: Record<string, NodeChoice[]> = {
     {
       id: 'welcome-nami-aboard',
       label: 'Welcome Nami aboard',
-      detail: 'Recruit Nami permanently, set the final checkpoint, and open the free Orange Town pack.',
+      detail: 'Recruit Nami permanently, set the arc checkpoint, and open the free Orange Town pack before sailing for Syrup Village.',
       consequences: [
         { type: 'guest', action: 'remove', characterId: 'nami' },
         { type: 'recruit', characterId: 'nami', preferredRoles: ['navigator'] },
@@ -316,15 +316,15 @@ export const orangeTownChoices: Record<string, NodeChoice[]> = {
           type: 'pack',
           packId: 'orange-town',
           resume: {
-            phase: 'victory',
-            activeArcId: 'orange-town',
-            currentNodeId: 'maps-and-promises',
+            phase: 'map',
+            activeArcId: 'syrup-village',
+            currentNodeId: 'syrup-village-shore',
           },
         },
       ],
       outcome: {
         title: 'Orange Town complete',
-        detail: 'Nami joins the permanent crew and the final arc pack is ready to open.',
+        detail: 'Nami joins the permanent crew and an arc pack waits before the voyage continues.',
         journalEntry: 'Nami joined the crew as its navigator after Buggy\'s defeat.',
       },
     },

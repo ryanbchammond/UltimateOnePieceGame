@@ -8,7 +8,6 @@ import {
   groupDamage,
   move,
   selfGuard,
-  selfStat,
 } from './moves';
 import { getCrewCharacter, getPlayerFighters, startingActivePartyIds } from '../crew/characters';
 
@@ -28,28 +27,10 @@ const multiTarget = (id: string, name: string, element: Element, power: number):
 export const demoFighters: FighterDefinition[] = [
   ...getPlayerFighters(startingActivePartyIds),
   {
-    id: 'kuro',
-    name: 'Captain Kuro',
+    ...getCrewCharacter('kuro').fighter,
     side: 'enemy',
     slot: 0,
-    maxHp: 88,
-    attack: 19,
-    defense: 10,
-    speed: 20,
-    types: ['swordsman'],
-    devilFruitUser: false,
     battleIq: 75,
-    moves: [
-      move('shakushi', 'Shakushi', 'swordsman', 5, 'enemy', [
-        damageEffect(20, { condition: 'target-negative-effect', power: 8 }),
-      ]),
-      selfStat('silent-step', 'Silent Step', 'swordsman', 'speed'),
-      debuff('out-of-the-bag', 'Out of the Bag', 'beast', 'defense'),
-      move('cat-claws', 'Cat Claws', 'beast', 3, 'enemy-group', [
-        damageEffect(9),
-        damageOverTimeEffect('bleed', 'Bleed'),
-      ], { maxTargets: 2 }),
-    ],
   },
   {
     id: 'arlong',

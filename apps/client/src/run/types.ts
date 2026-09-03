@@ -9,7 +9,11 @@ export type CardRarity =
   | 'legendary'
   | 'mythical';
 export type NodeService = 'crew-assignments' | 'tavern';
-export type StoryArcId = 'east-blue-prototype' | 'romance-dawn' | 'orange-town';
+export type StoryArcId =
+  | 'east-blue-prototype'
+  | 'romance-dawn'
+  | 'orange-town'
+  | 'syrup-village';
 export type MapNodeType =
   | 'start'
   | 'battle'
@@ -30,10 +34,14 @@ export type EncounterId =
   | 'harbor-decoy'
   | 'acrobat-rooftops'
   | 'buggys-big-top'
+  | 'syrup-north-slope'
+  | 'syrup-mansion-grounds'
+  | 'black-cat-raid'
   | 'voyage-alvida-raiders'
   | 'voyage-marine-patrol'
   | 'voyage-buggy-scouts'
-  | 'voyage-marine-pursuit';
+  | 'voyage-marine-pursuit'
+  | 'voyage-black-cat-lookouts';
 export type CharacterId =
   | 'luffy'
   | 'alvida'
@@ -52,7 +60,8 @@ export type CharacterId =
   | 'mohji'
   | 'richie'
   | 'cabaji'
-  | 'smoker';
+  | 'smoker'
+  | 'kuro';
 export type CharacterCapability = 'observation-haki';
 export type ArtifactId =
   | 'weathered-log-pose'
@@ -74,7 +83,11 @@ export type ShipRole =
 export type RoleAssignments = Record<ShipRole, CharacterId | null>;
 export type CharacterMovePp = Partial<Record<CharacterId, Record<string, number>>>;
 export type CharacterHp = Partial<Record<CharacterId, number>>;
-export type CardPackId = 'baratie-east-blue' | 'romance-dawn' | 'orange-town';
+export type CardPackId =
+  | 'baratie-east-blue'
+  | 'romance-dawn'
+  | 'orange-town'
+  | 'syrup-village';
 
 export interface RewardChange {
   label: string;
@@ -226,7 +239,13 @@ export type VoyageEventId =
   | 'castaway-doctor'
   | 'unmarked-den-den-mushi'
   | 'wrecked-circus-barge'
-  | 'sheltered-fishing-islet';
+  | 'sheltered-fishing-islet'
+  | 'black-cat-lookout-boat'
+  | 'kayas-relief-crate'
+  | 'syrup-coast-cache'
+  | 'village-apothecary'
+  | 'sheep-cliff-crosswind'
+  | 'usopps-false-alarm';
 
 export interface VoyageLeg {
   id: string;
@@ -236,7 +255,13 @@ export interface VoyageLeg {
   currentEventIndex: number;
 }
 
-export type VoyageContext = 'open-sea' | 'alvida-ship' | 'shells-town' | 'orange-town' | 'immediate';
+export type VoyageContext =
+  | 'open-sea'
+  | 'alvida-ship'
+  | 'shells-town'
+  | 'orange-town'
+  | 'syrup-village'
+  | 'immediate';
 
 export interface StoryTravelRule {
   context: VoyageContext;

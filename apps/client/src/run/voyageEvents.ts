@@ -843,6 +843,228 @@ export const voyageEventDefinitions: Record<VoyageEventId, VoyageEventDefinition
       },
     ],
   },
+  'black-cat-lookout-boat': {
+    id: 'black-cat-lookout-boat',
+    arcIds: ['syrup-village'],
+    contexts: ['open-sea', 'syrup-village'],
+    category: 'battle',
+    name: 'Black Cat Lookout Boat',
+    subtitle: 'Kuro’s scouts recognize the Straw Hats',
+    description: 'A narrow cutter slips from behind the sheep-shaped cliffs and its raiders draw their cat-marked sabers.',
+    weight: 15,
+    encounterId: 'voyage-black-cat-lookouts',
+    victory: {
+      title: 'The lookout boat is scattered',
+      detail: 'The scouts abandon a bundle of stolen village supplies as they flee.',
+      journalEntry: 'The crew defeated Black Cat lookouts patrolling Syrup Village’s coast.',
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: 35 },
+        { type: 'resource', resource: 'bounty', amount: 400, captainBountyBonus: true },
+      ],
+    },
+  },
+  'kayas-relief-crate': {
+    id: 'kayas-relief-crate',
+    arcIds: ['syrup-village'],
+    contexts: ['open-sea', 'syrup-village'],
+    category: 'treasure',
+    name: "Kaya's Relief Crate",
+    subtitle: 'Medicine and coin marked for the village',
+    description: 'A supply crate has broken loose from a coastal delivery, but its contents are still dry.',
+    weight: 13,
+    choices: [
+      {
+        id: 'return-relief-crate',
+        label: 'Return the crate intact',
+        detail: 'Gain 300 bounty and heal the active party for 25% max HP.',
+        consequences: [
+          { type: 'resource', resource: 'bounty', amount: 300 },
+          { type: 'heal', target: 'active-party', percent: 25 },
+        ],
+        outcome: {
+          title: 'The delivery reaches shore',
+          detail: 'The villagers share a little medicine before carrying the crate uphill.',
+          journalEntry: 'The crew returned Kaya’s lost relief supplies to Syrup Village.',
+        },
+      },
+      {
+        id: 'salvage-relief-coins',
+        label: 'Salvage the loose coin purse',
+        detail: 'Gain 55 Berries as immediate treasure.',
+        consequences: [{ type: 'resource', resource: 'berries', amount: 55, treasureReward: true }],
+        outcome: {
+          title: 'Loose coins recovered',
+          detail: 'The damaged crate yields enough coin to provision the ship.',
+          journalEntry: 'The crew recovered loose Berries from a drifting relief crate.',
+        },
+      },
+    ],
+  },
+  'syrup-coast-cache': {
+    id: 'syrup-coast-cache',
+    arcIds: ['syrup-village'],
+    contexts: ['open-sea', 'syrup-village'],
+    category: 'rest',
+    name: "Usopp's Coast Cache",
+    subtitle: 'Emergency rations beneath a painted stone',
+    description: 'One of Usopp’s highly secret supply caches contains blankets, fresh water, and enough food for a proper rest.',
+    weight: 12,
+    choices: [
+      {
+        id: 'rest-at-coast-cache',
+        label: 'Rest beside the cache',
+        detail: 'Restore all move PP and heal the whole crew for 50% max HP.',
+        consequences: [
+          { type: 'restore', target: 'move-pp' },
+          { type: 'heal', target: 'crew', percent: 50 },
+        ],
+        outcome: {
+          title: 'The crew catches its breath',
+          detail: 'Usopp’s preparations are surprisingly useful.',
+          journalEntry: 'The crew rested beside one of Usopp’s hidden coast caches.',
+        },
+      },
+      {
+        id: 'patch-at-coast-cache',
+        label: 'Use the spare canvas on the ship',
+        detail: 'Repair 8 hull, 12 with a Shipwright, or 16 with an ideal Shipwright.',
+        consequences: [{
+          type: 'hull-repair',
+          amount: 8,
+          roleAdjustedAmount: { role: 'shipwright', standard: 12, ideal: 16 },
+        }],
+        outcome: {
+          title: 'Canvas patches hold',
+          detail: 'The cache’s spare material reinforces the battered hull.',
+          journalEntry: 'The crew used Usopp’s spare canvas to patch the ship.',
+        },
+      },
+    ],
+  },
+  'village-apothecary': {
+    id: 'village-apothecary',
+    arcIds: ['syrup-village'],
+    contexts: ['open-sea', 'syrup-village'],
+    category: 'shop',
+    name: 'Village Apothecary Cart',
+    subtitle: 'A cautious merchant on the coast road',
+    description: 'An apothecary evacuating the lower road offers a few supplies before continuing uphill.',
+    weight: 10,
+    choices: [
+      {
+        id: 'buy-syrup-medicine',
+        label: 'Buy medicine · 30 Berries',
+        detail: 'Spend 30 Berries to heal the whole crew for 50% max HP.',
+        requirements: [{ type: 'berries', amount: 30 }],
+        consequences: [
+          { type: 'resource', resource: 'berries', amount: -30 },
+          { type: 'heal', target: 'crew', percent: 50 },
+        ],
+        outcome: {
+          title: 'Medicine distributed',
+          detail: 'The apothecary treats the crew before taking the cart uphill.',
+          journalEntry: 'The crew bought medicine from a Syrup Village apothecary.',
+        },
+      },
+      {
+        id: 'buy-syrup-pitch',
+        label: 'Buy pitch and rope · 25 Berries',
+        detail: 'Spend 25 Berries to repair 15 hull.',
+        requirements: [{ type: 'berries', amount: 25 }],
+        consequences: [
+          { type: 'resource', resource: 'berries', amount: -25 },
+          { type: 'hull-repair', amount: 15 },
+        ],
+        outcome: {
+          title: 'Emergency repairs complete',
+          detail: 'Fresh pitch seals the seams before the tide turns.',
+          journalEntry: 'The crew bought repair materials from the village apothecary.',
+        },
+      },
+      leaveChoice('leave-village-apothecary', 'The crew let the apothecary continue uphill.'),
+    ],
+  },
+  'sheep-cliff-crosswind': {
+    id: 'sheep-cliff-crosswind',
+    arcIds: ['syrup-village'],
+    contexts: ['open-sea', 'syrup-village'],
+    category: 'hazard',
+    name: 'Sheep-Cliff Crosswind',
+    subtitle: 'A sudden gust drives the ship toward stone',
+    description: 'Wind funnels between the pale cliffs while half-submerged rocks close off the easy route.',
+    weight: 12,
+    choices: [
+      {
+        id: 'chart-sheep-cliffs',
+        label: 'Chart the submerged rocks',
+        detail: 'Risk 9 hull damage, reduced to 4 by a Navigator and 0 by an ideal or Log Pose-assisted Navigator.',
+        consequences: [{
+          type: 'hull-damage',
+          amount: 9,
+          protectedByShipwright: true,
+          roleAdjustedAmount: { role: 'navigator', standard: 4, ideal: 0 },
+        }],
+        outcome: {
+          title: 'The hidden rocks pass astern',
+          detail: 'A narrow channel leads the ship away from the cliff face.',
+          journalEntry: 'The crew navigated the submerged rocks below Syrup Village.',
+        },
+      },
+      {
+        id: 'steer-through-crosswind',
+        label: 'Steer directly through the gusts',
+        detail: 'Risk 7 hull damage, reduced to 3 by a Helmsman and 0 by an ideal or reinforced Helmsman.',
+        consequences: [{
+          type: 'hull-damage',
+          amount: 7,
+          protectedByShipwright: true,
+          roleAdjustedAmount: { role: 'helmsman', standard: 3, ideal: 0 },
+        }],
+        outcome: {
+          title: 'The helm holds true',
+          detail: 'The ship powers through the funneling wind and reaches calm water.',
+          journalEntry: 'The crew held course through Syrup Village’s cliff winds.',
+        },
+      },
+    ],
+  },
+  'usopps-false-alarm': {
+    id: 'usopps-false-alarm',
+    arcIds: ['syrup-village'],
+    contexts: ['open-sea', 'syrup-village'],
+    category: 'wildcard',
+    name: "Usopp's False Alarm",
+    subtitle: 'Pirates are coming—this time, perhaps',
+    description: 'Usopp’s shout sends villagers running before anyone can tell whether the distant sail is dangerous.',
+    weight: 10,
+    choices: [
+      {
+        id: 'help-usopp-scout',
+        label: 'Help Usopp scout the sail',
+        detail: 'Gain 200 bounty and 25 Berries when the “pirate ship” proves to be a grateful fishing boat.',
+        consequences: [
+          { type: 'resource', resource: 'bounty', amount: 200 },
+          { type: 'resource', resource: 'berries', amount: 25 },
+        ],
+        outcome: {
+          title: 'A harmless sail identified',
+          detail: 'The fishermen reward the crew for clearing up the panic.',
+          journalEntry: 'The crew investigated one of Usopp’s alarms and reassured the village.',
+        },
+      },
+      {
+        id: 'use-the-alarm-as-a-drill',
+        label: 'Turn the alarm into a defense drill',
+        detail: 'Gain 350 bounty for helping the villagers prepare for a real attack.',
+        consequences: [{ type: 'resource', resource: 'bounty', amount: 350 }],
+        outcome: {
+          title: 'Panic becomes preparation',
+          detail: 'By sunset, every family knows where to shelter.',
+          journalEntry: 'The crew turned Usopp’s false alarm into a village defense drill.',
+        },
+      },
+    ],
+  },
 };
 
 export const voyageCategoryLabels: Record<VoyageEventCategory, string> = {

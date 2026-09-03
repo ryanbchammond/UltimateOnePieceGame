@@ -180,6 +180,36 @@ describe('Story encounters', () => {
       .toBe('victory');
   });
 
+  it.each<[EncounterId, string[]]>([
+    ['syrup-north-slope', ['jango', 'black-cat-raider-a', 'black-cat-raider-b']],
+    ['syrup-mansion-grounds', ['sham', 'buchi']],
+  ])('%s has its authored lineup and is winnable by the pre-Usopp crew', (id, enemyIds) => {
+    const enemies = getEncounterFighters(id, ['luffy', 'zoro', 'nami'])
+      .filter((fighter) => fighter.side === 'enemy');
+    expect(enemies.map((fighter) => fighter.id)).toEqual(enemyIds);
+    expect(enemies.every((fighter) => fighter.moves.length === 4)).toBe(true);
+    expect(playWithBasicFocusFire(id, ['luffy', 'zoro', 'nami']).battle.status).toBe('victory');
+  });
+
+  it('builds Kuro’s four-unit raid and keeps it reliable with Usopp selected', () => {
+    const enemies = getEncounterFighters('black-cat-raid', ['luffy', 'zoro', 'nami', 'usopp'])
+      .filter((fighter) => fighter.side === 'enemy');
+    expect(enemies.map((fighter) => fighter.id)).toEqual(['kuro', 'jango', 'sham', 'buchi']);
+    expect(enemies.every((fighter) => fighter.moves.length === 4)).toBe(true);
+    expect(playWithBasicFocusFire('black-cat-raid', ['luffy', 'zoro', 'nami']).battle.status)
+      .toBe('victory');
+    expect(playWithBasicFocusFire('black-cat-raid', ['luffy', 'zoro', 'nami', 'usopp']).battle.status)
+      .toBe('victory');
+  });
+
+  it('keeps Black Cat voyage lookouts a light encounter for the arriving crew', () => {
+    const enemies = getEncounterFighters('voyage-black-cat-lookouts', ['luffy', 'zoro', 'nami'])
+      .filter((fighter) => fighter.side === 'enemy');
+    expect(enemies).toHaveLength(2);
+    expect(playWithBasicFocusFire('voyage-black-cat-lookouts', ['luffy', 'zoro', 'nami']).battle.status)
+      .toBe('victory');
+  });
+
   it.each<[EncounterId, EncounterId]>([
     ['alvida-deck', 'marine-yard'],
     ['alvida-deck', 'execution-grounds'],

@@ -771,7 +771,7 @@ describe('Story run store', () => {
     expect(useRunStore.getState().pendingVoyage?.eventIds.length).toBeLessThanOrEqual(3);
   });
 
-  it('completes Buggy, permanently recruits Nami, and closes the campaign after the Orange Town pack', () => {
+  it('completes Buggy, permanently recruits Nami, and continues to Syrup Village after the Orange Town pack', () => {
     reachOrangeOfficerChoice();
     expect(useRunStore.getState().resolveNode('set-harbor-decoy')).toBe(true);
     expect(useRunStore.getState().enterNode('harbor-decoy')).toBe(true);
@@ -801,13 +801,110 @@ describe('Story run store', () => {
     for (const card of pack.cards) useRunStore.getState().revealPackCard(card.cardId);
     expect(useRunStore.getState().claimPackCard(pack.cards[0].cardId)).toBe(true);
     expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'map',
+      activeArcId: 'syrup-village',
+      currentNodeId: 'syrup-village-shore',
+      pendingPack: null,
+      rewardPending: true,
+      rewardDestinationNodeId: 'syrup-village-shore',
+      rewardOriginNodeId: 'maps-and-promises',
+      crewAssignmentWindow: 'card-pull',
+    }));
+  });
+
+  it.each([
+    ['believe-usopp', 'syrup-north-slope', 'fortify-the-slope', 535, 17_900],
+    ['follow-the-money', 'syrup-mansion-grounds', 'guard-kayas-household', 640, 17_170],
+  ] as const)(
+    'completes the Syrup Village %s route, recruits Usopp, and closes the third arc',
+    (warningChoice, encounterId, restChoice, expectedBerries, expectedBounty) => {
+      beginSyrupVillage();
+      expect(useRunStore.getState().resolveNode('hear-usopp-out')).toBe(true);
+      expect(useRunStore.getState().guestIds).toContain('usopp');
+      expect(useRunStore.getState().activePartyIds).not.toContain('usopp');
+      expect(useRunStore.getState().checkpointNodeId).toBe('syrup-village-shore');
+
+      expect(useRunStore.getState().enterNode('usopps-warning')).toBe(true);
+      expect(useRunStore.getState().resolveNode(warningChoice)).toBe(true);
+      expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id)).toEqual([encounterId]);
+      expect(useRunStore.getState().enterNode(encounterId)).toBe(true);
+      useRunStore.getState().resolveBattle('victory');
+
+      expect(useRunStore.getState().enterNode('night-before-the-raid')).toBe(true);
+      useRunStore.getState().setCharacterMovePp('luffy', 'pistol', 1);
+      expect(useRunStore.getState().resolveNode(restChoice)).toBe(true);
+      expect(useRunStore.getState().characterMovePp).toEqual({});
+      expect(useRunStore.getState().checkpointNodeId).toBe('night-before-the-raid');
+
+      expect(useRunStore.getState().enterNode('kuros-black-cat-raid')).toBe(true);
+      useRunStore.getState().resolveBattle('victory');
+      expect(useRunStore.getState().berries).toBe(expectedBerries);
+      expect(useRunStore.getState().bounty).toBe(expectedBounty);
+
+      expect(useRunStore.getState().enterNode('the-going-merry')).toBe(true);
+      expect(useRunStore.getState().resolveNode('welcome-usopp-aboard')).toBe(true);
+      const beforePack = useRunStore.getState();
+      expect(beforePack.rosterIds).toContain('usopp');
+      expect(beforePack.guestIds).not.toContain('usopp');
+      expect(beforePack.hull).toBe(100);
+      expect(beforePack.pendingPack).toEqual(expect.objectContaining({
+        packId: 'syrup-village',
+        source: 'arc-reward',
+      }));
+
+      const pack = beforePack.pendingPack!;
+      useRunStore.getState().openPendingPack();
+      for (const card of pack.cards) useRunStore.getState().revealPackCard(card.cardId);
+      expect(useRunStore.getState().claimPackCard(pack.cards[0].cardId)).toBe(true);
+      expect(useRunStore.getState()).toEqual(expect.objectContaining({
+        phase: 'victory',
+        activeArcId: 'syrup-village',
+        currentNodeId: 'the-going-merry',
+        pendingPack: null,
+        rewardPending: true,
+      }));
+    },
+  );
+
+  it('migrates completed Orange Town saves and pending packs into the Syrup Village continuation', () => {
+    useRunStore.getState().startRun();
+    const base = useRunStore.getState();
+    const completed = migrateRunState({
+      ...base,
       phase: 'victory',
       activeArcId: 'orange-town',
       currentNodeId: 'maps-and-promises',
-      pendingPack: null,
-      rewardPending: true,
-      crewAssignmentWindow: 'card-pull',
+      visitedNodeIds: ['maps-and-promises'],
+    }, 5);
+    expect(completed).toEqual(expect.objectContaining({
+      phase: 'node',
+      activeArcId: 'syrup-village',
+      currentNodeId: 'syrup-village-shore',
+      rewardPending: false,
     }));
+    expect(completed.visitedNodeIds).toContain('syrup-village-shore');
+
+    const pending = migrateRunState({
+      ...base,
+      pendingPack: {
+        id: 'orange-town-1',
+        packId: 'orange-town',
+        packNumber: 1,
+        source: 'arc-reward',
+        stage: 'sealed',
+        cards: [],
+        resume: {
+          phase: 'victory',
+          activeArcId: 'orange-town',
+          currentNodeId: 'maps-and-promises',
+        },
+      },
+    }, 5);
+    expect(pending.pendingPack?.resume).toEqual({
+      phase: 'map',
+      activeArcId: 'syrup-village',
+      currentNodeId: 'syrup-village-shore',
+    });
   });
 
 });
@@ -863,6 +960,33 @@ function beginOrangeTown(): void {
     roleAssignments: { ...orangeTownArc.start.roleAssignments },
     characterMovePp: {},
     pendingPack: null,
+    latestReward: null,
+  });
+}
+
+function beginSyrupVillage(): void {
+  useRunStore.getState().startRun();
+  useRunStore.setState({
+    phase: 'node',
+    activeArcId: 'syrup-village',
+    berries: 300,
+    bounty: 12_000,
+    hull: 90,
+    currentNodeId: 'syrup-village-shore',
+    checkpointNodeId: 'maps-and-promises',
+    completedNodeIds: ['maps-and-promises'],
+    visitedNodeIds: ['maps-and-promises', 'syrup-village-shore'],
+    rosterIds: ['luffy', 'zoro', 'nami'],
+    guestIds: [],
+    activePartyIds: ['luffy', 'zoro', 'nami'],
+    roleAssignments: {
+      ...orangeTownArc.start.roleAssignments,
+      navigator: 'nami',
+    },
+    characterMovePp: {},
+    characterHp: {},
+    pendingPack: null,
+    rewardPending: false,
     latestReward: null,
   });
 }

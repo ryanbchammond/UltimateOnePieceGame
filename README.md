@@ -22,8 +22,8 @@ The client runs at `http://localhost:5173`. The server health endpoint is availa
 
 ## Playable campaign
 
-The active build contains the completed **Romance Dawn** and **Orange Town** campaign using Story
-Mode and Landlubber difficulty:
+The active build contains **Romance Dawn**, **Orange Town**, and **Syrup Village** using Story Mode
+and Landlubber difficulty:
 
 - Begin at Foosha Village with 75 Berries and 90/100 hull
 - Choose extra provisions or a fully repaired tiny boat before departure
@@ -44,8 +44,15 @@ Mode and Landlubber difficulty:
 - Reconverge at a PP-restoring Mayor checkpoint with separate civilian, rally, and supply outcomes
 - Defeat Buggy, Cabaji, Mohji, and Richie in the four-unit Big Top climax
 - Recruit Nami permanently as the Navigator-preferred crewmate
-- Break the seal on a free Orange Town pack, reveal all five cards, and keep exactly one
-- Finish at a two-arc campaign summary with the full crew, bounty, and resources preserved
+- Break the seal on a free Orange Town pack, reveal all five cards, keep exactly one, and sail for
+  Syrup Village
+- Add Usopp as an optional player-controlled guest and choose whether to believe his warning at the
+  coast or follow Nami's evidence trail around Kaya's mansion
+- Fight Jango's landing party or Sham and Buchi before reconverging at a PP-restoring checkpoint
+- Defeat Captain Kuro, Jango, Sham, and Buchi in the four-unit Black Cat Pirates climax
+- Recruit Usopp permanently, receive the Going Merry, and open a free Syrup Village pack featuring
+  Usopp and Kuro
+- Finish at a three-arc campaign summary with the full crew, bounty, and resources preserved
 - Use any one to four currently available permanent or guest characters without locked story slots
 - Manage battle composition independently from the ten permanent ship-role assignments
 - Track Berries, bounty, hull, PP, checkpoints, outcome receipts, and the captain's journal
@@ -55,8 +62,8 @@ Mode and Landlubber difficulty:
 - Automatically persist the current run in browser local storage under a clean development save
 
 The five-card keep-one system, six rarities, shards, star upgrades, role effects, artifacts, and the
-legacy East Blue prototype remain implemented and covered as reusable foundations. Romance Dawn
-and Orange Town now form the complete two-arc Story Mode vertical slice.
+legacy East Blue prototype remain implemented and covered as reusable foundations. The active
+Story Mode campaign now runs from Romance Dawn through Syrup Village.
 
 Enemy turns resolve automatically. On a crew turn, click or tap a living enemy on the battlefield,
 or use the synchronized keyboard-accessible target list, then choose one of the acting fighter's
@@ -71,7 +78,8 @@ Rare-or-higher slot, and uses provisional 60% Common, 35% Rare, and 5% Legendary
 slot. Featured characters receive 3x selection weight within their rarity. The full rarity model
 also supports Uncommon, Epic, and Mythical. The free Romance Dawn pack uses 48% Common, 20%
 Uncommon, 25% Rare, 6% Epic, and 1% Legendary odds, with Coby, Helmeppo, Alvida, and Morgan featured
-at 3x weight within their rarity.
+at 3x weight within their rarity. Orange Town and Syrup Village use the same rarity table; the
+Syrup Village pack features Usopp and Captain Kuro.
 Reduced-motion preferences suppress every standard, enhanced, special, aura, and smoke reveal
 animation while preserving the card rarity and selection information.
 Future Free-Roam and Chaos modes will use pack-driven recruitment.

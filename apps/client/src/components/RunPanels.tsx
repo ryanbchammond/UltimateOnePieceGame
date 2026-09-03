@@ -101,18 +101,18 @@ export function RunSetup() {
   return (
     <section className="setup-screen">
       <div className="setup-copy">
-        <p className="eyebrow">Two-arc development campaign</p>
+        <p className="eyebrow">Three-arc development campaign</p>
         <h2>Set sail from Foosha Village</h2>
         <p>
-          Begin Luffy's voyage, free Coby from Alvida, recruit Zoro in Shells Town, and continue
-          into Buggy-occupied Orange Town with Nami as a temporary ally.
+          Begin Luffy's voyage, recruit Zoro and Nami, then believe Usopp and stop Captain Kuro's
+          raid on Syrup Village.
         </p>
       </div>
       <div className="run-settings" aria-label="Run settings">
         <div>
           <span>Mode</span>
           <strong>Story</strong>
-          <small>Romance Dawn and Orange Town</small>
+          <small>Romance Dawn through Syrup Village</small>
         </div>
         <div>
           <span>Difficulty</span>
@@ -1041,14 +1041,15 @@ export function VictoryPanel({ onRestart }: { onRestart: () => void }) {
 
   return (
     <section className="victory-panel">
-      <p className="eyebrow">Two-arc campaign complete</p>
-      <h2>Orange Town is free!</h2>
+      <p className="eyebrow">Three-arc campaign complete</p>
+      <h2>Syrup Village is safe!</h2>
       <p>
-        Luffy completed Romance Dawn and Orange Town with a {bounty.toLocaleString()} bounty,{' '}
-        {berries.toLocaleString()} Berries, and {rosterIds.length} permanent crew cards.
+        Luffy completed Romance Dawn, Orange Town, and Syrup Village with a{' '}
+        {bounty.toLocaleString()} bounty, {berries.toLocaleString()} Berries, and{' '}
+        {rosterIds.length} permanent crew cards.
       </p>
       <div className="campaign-summary-grid">
-        <div><span>Arcs cleared</span><strong>2</strong></div>
+        <div><span>Arcs cleared</span><strong>3</strong></div>
         <div><span>Permanent roster</span><strong>{rosterIds.length}</strong></div>
         <div><span>Journal entries</span><strong>{journal.length}</strong></div>
       </div>

@@ -172,7 +172,7 @@ export function migrateRunState(persistedState: unknown, version: number): RunSn
         ],
       }
     : persisted;
-  return {
+  const migrated: RunSnapshot = {
     ...snapshot,
     pendingVoyage: version >= 4 ? snapshot.pendingVoyage ?? null : null,
     voyageEventHistory: version >= 4 ? snapshot.voyageEventHistory ?? [] : [],
@@ -188,6 +188,39 @@ export function migrateRunState(persistedState: unknown, version: number): RunSn
     rewardDestinationNodeId: version >= 3 ? snapshot.rewardDestinationNodeId ?? null : null,
     rewardOriginNodeId: version >= 5 ? snapshot.rewardOriginNodeId ?? null : null,
   };
+
+  if (version < 6 && migrated.pendingPack?.packId === 'orange-town' &&
+    migrated.pendingPack.resume?.phase === 'victory') {
+    migrated.pendingPack = {
+      ...migrated.pendingPack,
+      resume: {
+        phase: 'map',
+        activeArcId: 'syrup-village',
+        currentNodeId: 'syrup-village-shore',
+      },
+    };
+  }
+
+  if (
+    version < 6 &&
+    migrated.phase === 'victory' &&
+    migrated.activeArcId === 'orange-town' &&
+    migrated.currentNodeId === 'maps-and-promises'
+  ) {
+    return {
+      ...migrated,
+      phase: 'node',
+      activeArcId: 'syrup-village',
+      currentNodeId: 'syrup-village-shore',
+      visitedNodeIds: [...new Set([...migrated.visitedNodeIds, 'syrup-village-shore'])],
+      rewardPending: false,
+      rewardDestinationNodeId: null,
+      rewardOriginNodeId: null,
+      journal: [...migrated.journal, 'The crew sailed onward to Syrup Village.'].slice(-12),
+    };
+  }
+
+  return migrated;
 }
 
 function createRewardReceipt(
@@ -812,7 +845,7 @@ export const useRunStore = create<RunStoreState>()(
     }),
     {
       name: runStorageKey,
-      version: 5,
+      version: 6,
       storage: runStorage,
       migrate: migrateRunState,
     },

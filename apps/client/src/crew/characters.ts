@@ -624,6 +624,32 @@ export const crewCharacters: Record<CharacterId, CrewCharacter> = {
       ],
     },
   },
+  kuro: {
+    id: 'kuro',
+    name: 'Captain Kuro',
+    epithet: 'Kuro of a Hundred Plans',
+    idealRoles: ['captain', 'fighter-1', 'fighter-2', 'fighter-3'],
+    rarity: 'epic',
+    fighter: {
+      id: 'kuro',
+      name: 'Captain Kuro',
+      maxHp: 88,
+      attack: 19,
+      defense: 10,
+      speed: 20,
+      types: ['swordsman'],
+      devilFruitUser: false,
+      moves: [
+        conditionalDamage('shakushi', 'Shakushi', 'swordsman', 20, 'target-negative-effect', 8, 5),
+        selfStat('silent-step', 'Silent Step', 'swordsman', 'speed'),
+        debuff('out-of-the-bag', 'Out of the Bag', 'beast', 'defense'),
+        groupMove('cat-claws', 'Cat Claws', 'beast', 2, 3, [
+          damageEffect(9),
+          damageOverTimeEffect('bleed', 'Bleed'),
+        ]),
+      ],
+    },
+  },
   smoker: {
     id: 'smoker',
     name: 'Smoker',

@@ -16,6 +16,12 @@ import {
   orangeTownConnections,
   orangeTownNodes,
 } from './orangeTownMap';
+import {
+  syrupVillageArc,
+  syrupVillageChoices,
+  syrupVillageConnections,
+  syrupVillageNodes,
+} from './syrupVillageMap';
 import type {
   NodeService,
   RunSnapshot,
@@ -54,6 +60,14 @@ const travelRuleEntries: Array<[[string, string], VoyageContext, number, number]
   [['acrobat-rooftops', 'mayors-resolve'], 'orange-town', 0, 2],
   [['mayors-resolve', 'buggys-big-top'], 'immediate', 0, 0],
   [['buggys-big-top', 'maps-and-promises'], 'immediate', 0, 0],
+  [['maps-and-promises', 'syrup-village-shore'], 'open-sea', 1, 3],
+  [['syrup-village-shore', 'usopps-warning'], 'syrup-village', 0, 2],
+  [['usopps-warning', 'syrup-north-slope'], 'immediate', 0, 0],
+  [['usopps-warning', 'syrup-mansion-grounds'], 'immediate', 0, 0],
+  [['syrup-north-slope', 'night-before-the-raid'], 'syrup-village', 0, 2],
+  [['syrup-mansion-grounds', 'night-before-the-raid'], 'syrup-village', 0, 2],
+  [['night-before-the-raid', 'kuros-black-cat-raid'], 'immediate', 0, 0],
+  [['kuros-black-cat-raid', 'the-going-merry'], 'immediate', 0, 0],
 ];
 
 const travelRules: Record<string, StoryTravelRule> = Object.fromEntries(
@@ -63,19 +77,30 @@ const travelRules: Record<string, StoryTravelRule> = Object.fromEntries(
   ]),
 );
 
-// The approved alpha remains active while Romance Dawn and Orange Town are authored. Keeping the
-// legacy content behind this boundary lets the UI and stores stop depending on a specific saga.
+// Keep the legacy whole-East-Blue prototype behind the shared boundary as reference content while
+// the active campaign advances through separately authored canonical arcs.
 export const activeStoryContent: StoryContent = {
   startArcId: 'romance-dawn',
-  arcs: [romanceDawnArc, orangeTownArc, eastBluePrototypeArc],
-  nodes: [...romanceDawnNodes, ...orangeTownNodes, ...eastBluePrototypeNodes],
+  arcs: [romanceDawnArc, orangeTownArc, syrupVillageArc, eastBluePrototypeArc],
+  nodes: [
+    ...romanceDawnNodes,
+    ...orangeTownNodes,
+    ...syrupVillageNodes,
+    ...eastBluePrototypeNodes,
+  ],
   connections: [
     ...romanceDawnConnections,
     ...orangeTownConnections,
+    ...syrupVillageConnections,
     ...eastBluePrototypeConnections,
   ],
   travelRules,
-  choices: { ...romanceDawnChoices, ...orangeTownChoices, ...eastBluePrototypeChoices },
+  choices: {
+    ...romanceDawnChoices,
+    ...orangeTownChoices,
+    ...syrupVillageChoices,
+    ...eastBluePrototypeChoices,
+  },
 };
 
 export const storyNodes = activeStoryContent.nodes;

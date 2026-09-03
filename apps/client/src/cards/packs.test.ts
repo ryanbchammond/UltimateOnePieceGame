@@ -10,6 +10,7 @@ import {
   getCardAnimationKey,
   orangeTownCardPack,
   romanceDawnCardPack,
+  syrupVillageCardPack,
 } from './packs';
 
 describe('card packs', () => {
@@ -135,6 +136,20 @@ describe('card packs', () => {
     expect(drawCardFromPack(orangeTownCardPack, sequenceRandom(0.7, 0.99))).toBe('buggy');
     expect(drawCardFromPack(orangeTownCardPack, sequenceRandom(0.95, 0))).toBe('morgan');
     expect(drawCardFromPack(orangeTownCardPack, sequenceRandom(0.995, 0))).toBe('smoker');
+  });
+
+  it('features Usopp and Kuro in the Syrup Village arc pack', () => {
+    expect(syrupVillageCardPack.cost).toBe(0);
+    expect(syrupVillageCardPack.rarityOdds).toEqual(romanceDawnCardPack.rarityOdds);
+    expect(syrupVillageCardPack.featuredCharacterIds).toEqual(['usopp', 'kuro']);
+    expect(syrupVillageCardPack.characterIds).toContain('usopp');
+    expect(syrupVillageCardPack.characterIds).toContain('kuro');
+    expect(drawCardFromPack(syrupVillageCardPack, sequenceRandom(0.7, 0.99))).toBe('buggy');
+    expect(drawCardFromPack(syrupVillageCardPack, sequenceRandom(0.95, 0.99))).toBe('morgan');
+    expect(drawCardsFromPack(
+      syrupVillageCardPack,
+      sequenceRandom(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    )).toHaveLength(5);
   });
 });
 

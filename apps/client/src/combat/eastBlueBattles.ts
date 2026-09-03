@@ -391,6 +391,128 @@ const voyageMarinePursuit = tuneLineup(
   0.75,
 );
 
+function createBlackCatRaider(
+  id: string,
+  name: string,
+  slot: number,
+  speed: number,
+): FighterDefinition {
+  return {
+    id,
+    name,
+    side: 'enemy',
+    slot,
+    maxHp: 48,
+    attack: 12,
+    defense: 6,
+    speed,
+    types: ['swordsman'],
+    devilFruitUser: false,
+    battleIq: 25,
+    moves: [
+      damage(`${id}-cat-saber`, 'Cat Saber', 'swordsman', 12),
+      allyGuard(`${id}-scramble-cover`, 'Scramble for Cover', 'swordsman'),
+      stat(`${id}-jeer`, 'Jeer', 'beast', 'enemy', 'defense'),
+      multiTarget(`${id}-claw-rush`, 'Claw Rush', 'beast', 5),
+    ],
+  };
+}
+
+const jango: FighterDefinition = {
+  id: 'jango',
+  name: 'Jango',
+  side: 'enemy',
+  slot: 0,
+  maxHp: 72,
+  attack: 15,
+  defense: 8,
+  speed: 17,
+  types: ['sniper'],
+  devilFruitUser: false,
+  battleIq: 55,
+  moves: [
+    conditionalDamage('jango-chakram', 'Chakram', 'sniper', 17, 'target-negative-effect', 7, 6),
+    allyStat('jango-hypnotic-command', 'Hypnotic Command', 'magic', 'attack'),
+    stat('jango-mesmerize', 'Mesmerize', 'magic', 'enemy', 'speed'),
+    groupMove('jango-dancing-discs', 'Dancing Discs', 'sniper', 3, 3, [damageEffect(7)]),
+  ],
+};
+
+const sham: FighterDefinition = {
+  id: 'sham',
+  name: 'Sham',
+  side: 'enemy',
+  slot: 0,
+  maxHp: 70,
+  attack: 17,
+  defense: 8,
+  speed: 18,
+  types: ['swordsman'],
+  devilFruitUser: false,
+  battleIq: 45,
+  moves: [
+    conditionalDamage('sham-sneak-claw', 'Sneak Claw', 'swordsman', 17, 'target-negative-effect', 7, 6),
+    selfStat('sham-feline-footwork', 'Feline Footwork', 'beast', 'speed'),
+    stat('sham-taunting-hiss', 'Taunting Hiss', 'beast', 'enemy', 'defense'),
+    multiTarget('sham-cross-claw', 'Cross Claw', 'swordsman', 7),
+  ],
+};
+
+const buchi: FighterDefinition = {
+  id: 'buchi',
+  name: 'Buchi',
+  side: 'enemy',
+  slot: 0,
+  maxHp: 94,
+  attack: 19,
+  defense: 12,
+  speed: 11,
+  types: ['beast'],
+  devilFruitUser: false,
+  battleIq: 40,
+  moves: [
+    guardBreakDamage('buchi-body-slam', 'Body Slam', 'brawler', 20, 6, 7),
+    guard('buchi-thick-fur', 'Thick Fur', 'beast'),
+    allyStat('buchi-brothers-roar', "Brothers' Roar", 'beast', 'attack'),
+    multiTarget('buchi-catapult-crash', 'Catapult Crash', 'earth', 8),
+  ],
+};
+
+const syrupNorthSlope = tuneLineup(
+  placeEnemies(
+    jango,
+    createBlackCatRaider('black-cat-raider-a', 'Black Cat Raider', 0, 13),
+    createBlackCatRaider('black-cat-raider-b', 'Black Cat Lookout', 0, 12),
+  ),
+  0.8,
+  0.8,
+  0.8,
+);
+
+const syrupMansionGrounds = tuneLineup(
+  placeEnemies(sham, buchi),
+  0.9,
+  0.85,
+  0.85,
+);
+
+const blackCatRaid = tuneLineup(
+  placeEnemies(createCrewEnemy('kuro', 0, 75), jango, sham, buchi),
+  0.78,
+  0.78,
+  0.78,
+);
+
+const voyageBlackCatLookouts = tuneLineup(
+  placeEnemies(
+    createBlackCatRaider('voyage-black-cat-a', 'Black Cat Lookout', 0, 13),
+    createBlackCatRaider('voyage-black-cat-b', 'Black Cat Raider', 0, 12),
+  ),
+  0.7,
+  0.75,
+  0.75,
+);
+
 const buggysBigTop = tuneLineup(
   placeEnemies(
     createCrewEnemy('buggy', 0, 70),
@@ -498,10 +620,14 @@ const encounterEnemies: Record<EncounterId, FighterDefinition[]> = {
   'harbor-decoy': harborDecoy,
   'acrobat-rooftops': acrobatRooftops,
   'buggys-big-top': buggysBigTop,
+  'syrup-north-slope': syrupNorthSlope,
+  'syrup-mansion-grounds': syrupMansionGrounds,
+  'black-cat-raid': blackCatRaid,
   'voyage-alvida-raiders': voyageAlvidaRaiders,
   'voyage-marine-patrol': voyageMarinePatrol,
   'voyage-buggy-scouts': voyageBuggyScouts,
   'voyage-marine-pursuit': voyageMarinePursuit,
+  'voyage-black-cat-lookouts': voyageBlackCatLookouts,
   'shells-town': shellsTownMarines,
   'arlong-park': arlongPirates,
 };

@@ -131,10 +131,46 @@ export const orangeTownCardPack: CardPackDefinition = {
   featuredCharacterWeight,
 };
 
+export const syrupVillageCardPack: CardPackDefinition = {
+  id: 'syrup-village',
+  name: 'Syrup Village Card Pack',
+  cost: 0,
+  cardCount: cardsPerPack,
+  guaranteedRarity: 'rare',
+  rarityOdds: {
+    common: 48,
+    uncommon: 20,
+    rare: 25,
+    epic: 6,
+    legendary: 1,
+    mythical: 0,
+  },
+  characterIds: [
+    'coby',
+    'johnny',
+    'yosaku',
+    'mohji',
+    'richie',
+    'helmeppo',
+    'cabaji',
+    'usopp',
+    'alvida',
+    'tashigi',
+    'gin',
+    'buggy',
+    'kuro',
+    'morgan',
+    'smoker',
+  ],
+  featuredCharacterIds: ['usopp', 'kuro'],
+  featuredCharacterWeight,
+};
+
 export const cardPacks: Record<CardPackId, CardPackDefinition> = {
   'baratie-east-blue': baratieCardPack,
   'romance-dawn': romanceDawnCardPack,
   'orange-town': orangeTownCardPack,
+  'syrup-village': syrupVillageCardPack,
 };
 
 export function getCardPack(packId: CardPackId): CardPackDefinition {
