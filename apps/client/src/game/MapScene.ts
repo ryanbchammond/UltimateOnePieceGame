@@ -3,6 +3,7 @@ import {
   getStoryArc,
   getAvailableNodes,
   getStoryConnectionsForArc,
+  getStoryNode,
   getStoryNodesForArc,
   getStoryTravelRule,
   isNodeAvailable,
@@ -22,9 +23,19 @@ const nodeColors = {
   boss: 0x9d2f35,
 } as const;
 
+const mapWidth = 960;
+const mapHeight = 540;
+const horizontalOverscroll = mapWidth / 2;
+const verticalOverscroll = mapHeight / 2;
+const minimumMapZoom = 0.6;
+const maximumMapZoom = 2.5;
+const choiceGuideInset = mapWidth * 0.26;
+
 export class MapScene extends Phaser.Scene {
   private renderedRun?: RunSnapshot;
   private lastAnimatedVoyageId?: string;
+  private lastFocusedVoyageId?: string;
+  private lastChoiceFrameKey?: string;
   private dragging = false;
   private dragPoint = new Phaser.Math.Vector2();
   private dragDistance = 0;
@@ -52,7 +63,7 @@ export class MapScene extends Phaser.Scene {
 
   private zoomAt(screenX: number, screenY: number, zoom: number): void {
     const camera = this.cameras.main;
-    const nextZoom = Phaser.Math.Clamp(zoom, 1, 2.5);
+    const nextZoom = Phaser.Math.Clamp(zoom, minimumMapZoom, maximumMapZoom);
     if (Math.abs(nextZoom - camera.zoom) < 0.001) return;
 
     const before = camera.getWorldPoint(screenX, screenY);
@@ -65,12 +76,100 @@ export class MapScene extends Phaser.Scene {
   private resetCamera(): void {
     const camera = this.cameras.main;
     camera.setZoom(1);
-    camera.centerOn(480, 270);
+    camera.centerOn(mapWidth / 2, mapHeight / 2);
+
+    const run = useRunStore.getState();
+    const completedVoyageDestination = run.pendingVoyage &&
+      run.pendingVoyage.currentEventIndex >= run.pendingVoyage.eventIds.length
+      ? run.pendingVoyage.destinationNodeId
+      : null;
+    const choiceNodes = getAvailableNodes(run).filter(
+      (node) => !completedVoyageDestination || node.id === completedVoyageDestination,
+    );
+    this.lastChoiceFrameKey = undefined;
+    this.frameChoiceNodes(run, choiceNodes);
+  }
+
+  private focusCameraOnNode(node: StoryNode, duration: number): void {
+    const camera = this.cameras.main;
+    const zoom = 1.35;
+    // Phaser applies zoom around the camera midpoint, so scroll remains based on
+    // the unzoomed viewport size. Dividing these offsets by zoom pushes edge
+    // nodes away from the center as the camera closes in.
+    const targetScrollX = node.x - camera.width / 2;
+    const targetScrollY = node.y - camera.height / 2;
+
+    if (duration === 0) {
+      camera.setZoom(zoom);
+      camera.setScroll(targetScrollX, targetScrollY);
+      return;
+    }
+
+    this.tweens.add({
+      targets: camera,
+      zoom,
+      scrollX: targetScrollX,
+      scrollY: targetScrollY,
+      duration,
+      ease: 'Sine.InOut',
+      onComplete: () => camera.centerOn(node.x, node.y),
+    });
+  }
+
+  private frameChoiceNodes(run: RunSnapshot, nodes: StoryNode[]): void {
+    if (
+      run.mapTravelPending ||
+      run.mapFocusPending ||
+      nodes.length === 0 ||
+      window.matchMedia('(max-width: 900px)').matches
+    ) {
+      return;
+    }
+
+    const currentNode = run.currentNodeId
+      ? getStoryNode(run.currentNodeId)
+      : undefined;
+    const relevantNodes = currentNode
+      ? [currentNode, ...nodes.filter((node) => node.id !== currentNode.id)]
+      : nodes;
+    const frameKey = `${run.activeArcId}:${currentNode?.id ?? 'none'}:${nodes
+      .map((node) => node.id)
+      .join(',')}`;
+    if (this.lastChoiceFrameKey === frameKey) return;
+    this.lastChoiceFrameKey = frameKey;
+
+    const camera = this.cameras.main;
+    const leftmost = Math.min(...relevantNodes.map((node) => node.x));
+    const rightmost = Math.max(...relevantNodes.map((node) => node.x));
+    const relevantCenterX = (leftmost + rightmost) / 2;
+    const safeViewportCenterX = (camera.width - choiceGuideInset) / 2;
+    const targetMidpointX = relevantCenterX +
+      (camera.width / 2 - safeViewportCenterX) / camera.zoom;
+    const targetScrollX = targetMidpointX - camera.width / 2;
+    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 500;
+
+    if (duration === 0) {
+      camera.setScroll(targetScrollX, camera.scrollY);
+      return;
+    }
+
+    this.tweens.add({
+      targets: camera,
+      scrollX: targetScrollX,
+      duration,
+      ease: 'Sine.InOut',
+    });
   }
 
   private setupCameraControls(): void {
     const camera = this.cameras.main;
-    camera.setBounds(0, 0, 960, 540);
+    camera.setBounds(
+      -horizontalOverscroll,
+      -verticalOverscroll,
+      mapWidth + horizontalOverscroll * 2,
+      mapHeight + verticalOverscroll * 2,
+    );
+    camera.setBackgroundColor('#071a24');
     camera.setRoundPixels(true);
     this.input.addPointer(1);
     this.input.setDefaultCursor('grab');
@@ -81,10 +180,14 @@ export class MapScene extends Phaser.Scene {
       _deltaX: number,
       deltaY: number,
     ) => {
+      const run = useRunStore.getState();
+      if (run.mapTravelPending || run.mapFocusPending) return;
       this.zoomAt(pointer.x, pointer.y, camera.zoom - deltaY * 0.0012);
     });
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      const run = useRunStore.getState();
+      if (run.mapTravelPending || run.mapFocusPending) return;
       this.dragging = true;
       this.dragDistance = 0;
       this.dragPoint.set(pointer.x, pointer.y);
@@ -217,6 +320,8 @@ export class MapScene extends Phaser.Scene {
       const marker = this.createCrewMarker(origin.x, origin.y - 49, travelKind);
       const distance = Phaser.Math.Distance.Between(origin.x, origin.y, currentNode.x, currentNode.y);
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const duration = Phaser.Math.Clamp(distance * 4.2, 850, 2100);
+      this.focusCameraOnNode(currentNode, reducedMotion ? 0 : duration);
 
       if (reducedMotion) {
         marker.destroy();
@@ -233,7 +338,7 @@ export class MapScene extends Phaser.Scene {
         targets: marker,
         x: currentNode.x,
         y: currentNode.y - 49,
-        duration: Phaser.Math.Clamp(distance * 4.2, 850, 2100),
+        duration,
         ease: 'Sine.InOut',
         onComplete: () => {
           marker.destroy();
@@ -245,6 +350,25 @@ export class MapScene extends Phaser.Scene {
           this.time.delayedCall(350, () => useRunStore.getState().completeTravelPreview());
         },
       });
+      return;
+    }
+
+    if (
+      leg &&
+      run.mapFocusPending &&
+      leg.destinationNodeId === currentNode.id &&
+      this.lastFocusedVoyageId !== leg.id
+    ) {
+      this.lastFocusedVoyageId = leg.id;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const duration = reducedMotion ? 0 : 700;
+      this.focusCameraOnNode(currentNode, duration);
+      this.addMarkerIdle(this.createCrewMarker(
+        currentNode.x,
+        currentNode.y - 49,
+        this.markerKindForNode(currentNode.id),
+      ));
+      this.time.delayedCall(duration + 350, () => useRunStore.getState().completeMapFocus());
       return;
     }
 
@@ -298,7 +422,7 @@ export class MapScene extends Phaser.Scene {
       run.pendingVoyage.currentEventIndex >= run.pendingVoyage.eventIds.length
       ? run.pendingVoyage.destinationNodeId
       : null;
-    const numberedDestinations = run.mapTravelPending
+    const numberedDestinations = run.mapTravelPending || run.mapFocusPending
       ? []
       : getAvailableNodes(run).filter(
           (node) => !completedVoyageDestination || node.id === completedVoyageDestination,
@@ -424,7 +548,7 @@ export class MapScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(43);
       }
 
-      if (state === 'available' && !run.mapTravelPending) {
+      if (state === 'available' && !run.mapTravelPending && !run.mapFocusPending) {
         const hitArea = this.add
           .zone(node.x, node.y + 18, 96, 116)
           .setDepth(40)
@@ -437,6 +561,7 @@ export class MapScene extends Phaser.Scene {
     });
 
     this.renderCrewMarker(run, byId);
+    this.frameChoiceNodes(run, numberedDestinations);
 
     const legendText = this.add
       .text(928, 40, 'Click gold rings to travel  ·  ? = uncharted\nCrew badge = current position', {

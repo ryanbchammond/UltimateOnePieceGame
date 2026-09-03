@@ -50,9 +50,17 @@ describe('persisted voyage flow', () => {
 
     expect(useRunStore.getState().beginVoyage('barrel-at-sea')).toBe(true);
     expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'map',
+      currentNodeId: 'barrel-at-sea',
+      mapFocusPending: true,
+      pendingVoyage: expect.objectContaining({ destinationNodeId: 'barrel-at-sea' }),
+    }));
+    expect(useRunStore.getState().completeMapFocus()).toBe(true);
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
       phase: 'node',
       currentNodeId: 'barrel-at-sea',
       pendingVoyage: null,
+      mapFocusPending: false,
     }));
   });
 

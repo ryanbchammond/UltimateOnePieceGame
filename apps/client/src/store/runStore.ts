@@ -44,6 +44,7 @@ interface RunStoreState extends RunSnapshot {
   enterNode: (nodeId: string) => boolean;
   beginVoyage: (destinationNodeId: string, random?: () => number) => boolean;
   completeTravelPreview: () => boolean;
+  completeMapFocus: () => boolean;
   startVoyageBattle: () => boolean;
   resolveVoyageEvent: (choiceId: string) => boolean;
   resolveNode: (choiceId: string) => boolean;
@@ -109,6 +110,7 @@ function initialSnapshot(): RunSnapshot {
     rewardOriginNodeId: null,
     pendingVoyage: null,
     mapTravelPending: false,
+    mapFocusPending: false,
     voyageEventHistory: [],
   };
 }
@@ -126,6 +128,7 @@ function newRunSnapshot(): RunSnapshot {
     artifacts: [],
     pendingVoyage: null,
     mapTravelPending: false,
+    mapFocusPending: false,
     voyageEventHistory: [],
     journal: [arc.start.journalEntry],
   };
@@ -179,6 +182,7 @@ export function migrateRunState(persistedState: unknown, version: number): RunSn
     ...snapshot,
     pendingVoyage: version >= 4 ? snapshot.pendingVoyage ?? null : null,
     mapTravelPending: snapshot.mapTravelPending ?? false,
+    mapFocusPending: snapshot.mapFocusPending ?? false,
     voyageEventHistory: version >= 4 ? snapshot.voyageEventHistory ?? [] : [],
     characterHp: version >= 5 ? snapshot.characterHp ?? {} : {},
     pendingPack: snapshot.pendingPack
@@ -309,8 +313,9 @@ export const useRunStore = create<RunStoreState>()(
           set({
             currentNodeId: destination.id,
             visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
-            phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
-            pendingVoyage: null,
+            phase: 'map',
+            mapTravelPending: false,
+            mapFocusPending: true,
             pendingPack: null,
             crewAssignmentWindow: null,
             latestReward: null,
@@ -330,6 +335,7 @@ export const useRunStore = create<RunStoreState>()(
             phase: 'map',
             pendingVoyage: leg,
             mapTravelPending: true,
+            mapFocusPending: false,
             pendingPack: null,
             crewAssignmentWindow: null,
             latestReward: null,
@@ -344,6 +350,7 @@ export const useRunStore = create<RunStoreState>()(
           visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
           pendingVoyage: leg,
           mapTravelPending: true,
+          mapFocusPending: false,
           voyageEventHistory: [...(state.voyageEventHistory ?? []), ...leg.eventIds].slice(-24),
           pendingPack: null,
           crewAssignmentWindow: null,
@@ -355,13 +362,36 @@ export const useRunStore = create<RunStoreState>()(
         return true;
       },
 
+      completeMapFocus: () => {
+        const state = get();
+        const leg = state.pendingVoyage;
+        const destination = leg ? getStoryNode(leg.destinationNodeId) : undefined;
+        if (
+          state.phase !== 'map' ||
+          !state.mapFocusPending ||
+          !leg ||
+          leg.currentEventIndex < leg.eventIds.length ||
+          !destination
+        ) {
+          return false;
+        }
+
+        set({
+          phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
+          pendingVoyage: null,
+          mapTravelPending: false,
+          mapFocusPending: false,
+        });
+        return true;
+      },
+
       completeTravelPreview: () => {
         const state = get();
         const leg = state.pendingVoyage;
         if (state.phase !== 'map' || !state.mapTravelPending || !leg) return false;
 
         if (leg.eventIds.length > 0) {
-          set({ phase: 'voyage', mapTravelPending: false });
+          set({ phase: 'voyage', mapTravelPending: false, mapFocusPending: false });
           return true;
         }
 
@@ -371,6 +401,7 @@ export const useRunStore = create<RunStoreState>()(
           phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
           pendingVoyage: null,
           mapTravelPending: false,
+          mapFocusPending: false,
         });
         return true;
       },

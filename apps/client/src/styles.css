@@ -3479,6 +3479,12 @@ body::before {
   background: #286777;
 }
 
+.map-controls button:disabled {
+  cursor: wait;
+  filter: grayscale(0.7);
+  opacity: 0.42;
+}
+
 .map-workspace .workspace-context {
   position: absolute;
   z-index: 10;
@@ -3486,6 +3492,65 @@ body::before {
   bottom: 20px;
   width: min(350px, 40%);
 }
+
+.map-reward-overlay {
+  position: absolute;
+  z-index: 12;
+  top: 92px;
+  left: 50%;
+  width: min(590px, 48%);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.map-reward-overlay .reward-receipt {
+  grid-template-columns: minmax(190px, 1.2fr) minmax(190px, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 2px solid rgb(98 86 58 / 72%);
+  border-radius: 4px 13px 4px 13px;
+  color: var(--ink);
+  background: rgb(245 235 203 / 94%);
+  box-shadow: 5px 7px 0 rgb(25 30 26 / 22%);
+}
+
+.map-reward-overlay .reward-receipt h2 {
+  margin: 0 0 2px;
+  color: #8d3733;
+  font-size: 1rem;
+  text-shadow: none;
+}
+
+.map-reward-overlay .reward-receipt p:not(.panel-label) {
+  overflow: hidden;
+  color: #52605f;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-reward-overlay .reward-receipt dl {
+  align-content: center;
+}
+
+.map-reward-overlay .reward-receipt dl > div {
+  padding: 6px 8px;
+  border-color: rgb(48 65 64 / 17%);
+  background: rgb(255 250 230 / 42%);
+}
+
+.map-reward-overlay .reward-receipt dt {
+  color: #68716e;
+}
+
+.map-reward-overlay .reward-receipt dd,
+.map-reward-overlay .reward-receipt .neutral dd {
+  color: var(--ink);
+}
+
+.map-reward-overlay .reward-receipt .positive dd { color: #276650; }
+.map-reward-overlay .reward-receipt .negative dd { color: #9b3937; }
 
 .map-workspace .voyage-panel {
   position: relative;
@@ -3858,6 +3923,15 @@ body::before {
     bottom: auto;
     width: auto;
     margin: -12px 10px 0;
+  }
+
+  .map-reward-overlay {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+    margin: -8px 10px 20px;
+    transform: none;
   }
 
   .map-workspace .voyage-panel {

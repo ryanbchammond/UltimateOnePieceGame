@@ -203,6 +203,7 @@ export interface RunSnapshot {
   rewardOriginNodeId?: string | null;
   pendingVoyage?: VoyageLeg | null;
   mapTravelPending?: boolean;
+  mapFocusPending?: boolean;
   voyageEventHistory?: VoyageEventId[];
 }
 

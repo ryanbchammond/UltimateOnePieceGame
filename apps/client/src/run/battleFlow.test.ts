@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isBattleEncounterLoaded } from './battleFlow';
+import { isBattleEncounterLoaded, shouldShowBattlePreparation } from './battleFlow';
 
 const encounter = {
   runPhase: 'battle' as const,
@@ -29,5 +29,12 @@ describe('battle presentation flow', () => {
       loadedPartyIds: ['luffy'],
       battleStatus: 'victory',
     })).toBe(false);
+  });
+
+  it('requires preparation for every battle phase until its exact encounter is loaded', () => {
+    expect(shouldShowBattlePreparation('battle', false)).toBe(true);
+    expect(shouldShowBattlePreparation('battle', true)).toBe(false);
+    expect(shouldShowBattlePreparation('map', false)).toBe(false);
+    expect(shouldShowBattlePreparation('voyage', false)).toBe(false);
   });
 });

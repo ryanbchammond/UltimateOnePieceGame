@@ -247,12 +247,7 @@ export function VoyagePanel() {
   const run = useRunStore();
   const beginVoyage = useRunStore((state) => state.beginVoyage);
   const abandonRun = useRunStore((state) => state.abandonRun);
-  const startEncounter = useBattleStore((state) => state.startEncounter);
-  const activePartyIds = useRunStore((state) => state.activePartyIds);
-  const roleAssignments = useRunStore((state) => state.roleAssignments);
-  const characterStars = useRunStore((state) => state.characterStars);
-  const characterHp = useRunStore((state) => state.characterHp ?? {});
-  const characterMovePp = useRunStore((state) => state.characterMovePp);
+  const resetBattle = useBattleStore((state) => state.reset);
   const completedVoyageDestination = run.pendingVoyage &&
     run.pendingVoyage.currentEventIndex >= run.pendingVoyage.eventIds.length
     ? run.pendingVoyage.destinationNodeId
@@ -262,16 +257,7 @@ export function VoyagePanel() {
   );
 
   const sailTo = (node: StoryNode) => {
-    if (node.encounterId) {
-      startEncounter(
-        node.encounterId,
-        activePartyIds,
-        roleAssignments,
-        characterStars,
-        characterMovePp,
-        characterHp,
-      );
-    }
+    if (node.encounterId) resetBattle();
     beginVoyage(node.id);
   };
 
@@ -281,12 +267,12 @@ export function VoyagePanel() {
     }
   };
 
-  if (run.mapTravelPending && run.pendingVoyage) {
+  if ((run.mapTravelPending || run.mapFocusPending) && run.pendingVoyage) {
     const destination = getStoryNode(run.pendingVoyage.destinationNodeId);
     return (
       <section className="voyage-panel voyage-transit-card" aria-live="polite">
-        <p className="panel-label">Course plotted</p>
-        <span className="transit-kicker">Now under way</span>
+        <p className="panel-label">{run.mapFocusPending ? 'Destination selected' : 'Course plotted'}</p>
+        <span className="transit-kicker">{run.mapFocusPending ? 'Making landfall' : 'Now under way'}</span>
         <h2>{destination?.name ?? 'Next destination'}</h2>
         <p>{destination?.subtitle ?? 'The crew is moving along the charted route.'}</p>
         <span className="transit-progress" aria-hidden="true"><span /></span>

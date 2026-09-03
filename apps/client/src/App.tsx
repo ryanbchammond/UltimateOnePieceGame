@@ -6,6 +6,7 @@ import {
   CrewManager,
   NodePanel,
   PackOpeningScreen,
+  RewardReceiptPanel,
   RewardOutcomeScreen,
   RunSetup,
   RunStatus,
@@ -15,7 +16,7 @@ import {
 } from './components/RunPanels';
 import { PhaserCanvas } from './game/PhaserCanvas';
 import { activePartyHasCapability, shouldRevealBattleIq } from './crew/capabilities';
-import { isBattleEncounterLoaded } from './run/battleFlow';
+import { isBattleEncounterLoaded, shouldShowBattlePreparation } from './run/battleFlow';
 import { shouldShowVoyageNavigation } from './run/navigation';
 import { getStoryNode } from './run/storyContent';
 import { getCurrentVoyageEvent } from './run/voyageEvents';
@@ -64,18 +65,18 @@ function NavigationMark({ screen }: { screen: VoyageScreen }) {
   );
 }
 
-function MapControls() {
+function MapControls({ disabled = false }: { disabled?: boolean }) {
   const command = (detail: 'zoom-in' | 'zoom-out' | 'reset') => {
     window.dispatchEvent(new CustomEvent('uopa-map-command', { detail }));
   };
 
   return (
     <div className="map-controls" aria-label="Map view controls">
-      <span>Drag to pan · Scroll to zoom</span>
+      <span>{disabled ? 'Focusing destination…' : 'Drag to pan · Scroll to zoom'}</span>
       <div>
-        <button aria-label="Zoom map out" onClick={() => command('zoom-out')} type="button">−</button>
-        <button aria-label="Reset map view" onClick={() => command('reset')} type="button">⌖</button>
-        <button aria-label="Zoom map in" onClick={() => command('zoom-in')} type="button">+</button>
+        <button aria-label="Zoom map out" disabled={disabled} onClick={() => command('zoom-out')} type="button">−</button>
+        <button aria-label="Reset map view" disabled={disabled} onClick={() => command('reset')} type="button">⌖</button>
+        <button aria-label="Zoom map in" disabled={disabled} onClick={() => command('zoom-in')} type="button">+</button>
       </div>
     </div>
   );
@@ -92,6 +93,9 @@ export function App() {
   const characterHp = useRunStore((state) => state.characterHp ?? {});
   const pendingPack = useRunStore((state) => state.pendingPack);
   const rewardPending = useRunStore((state) => state.rewardPending ?? false);
+  const mapTransitionPending = useRunStore(
+    (state) => Boolean(state.mapTravelPending || state.mapFocusPending),
+  );
   const resolveBattle = useRunStore((state) => state.resolveBattle);
   const encounterId = useBattleStore((state) => state.encounterId);
   const battleStatus = useBattleStore((state) => state.battle.status);
@@ -118,6 +122,8 @@ export function App() {
     activePartyHasCapability(activePartyIds, 'observation-haki'),
   );
   const combatScreenVisible = runPhase === 'battle' && encounterLoaded;
+  const battlePreparationVisible = shouldShowBattlePreparation(runPhase, encounterLoaded);
+  const displayedVoyageScreen: VoyageScreen = battlePreparationVisible ? 'roster' : voyageScreen;
   const showVoyageNavigation = shouldShowVoyageNavigation(runPhase, encounterLoaded);
 
   const beginEncounter = () => {
@@ -137,29 +143,15 @@ export function App() {
       const nodeId = (event as CustomEvent<string>).detail;
       const node = getStoryNode(nodeId);
       if (!node) return;
-      if (node.encounterId) {
-        startEncounter(
-          node.encounterId,
-          activePartyIds,
-          roleAssignments,
-          characterStars,
-          characterMovePp,
-          characterHp,
-        );
-      }
+      if (node.encounterId) resetBattle();
       beginVoyage(node.id);
     };
 
     window.addEventListener('uopa-map-select-node', handleMapDestination);
     return () => window.removeEventListener('uopa-map-select-node', handleMapDestination);
   }, [
-    activePartyIds,
     beginVoyage,
-    characterHp,
-    characterMovePp,
-    characterStars,
-    roleAssignments,
-    startEncounter,
+    resetBattle,
   ]);
 
   const restartVoyage = () => {
@@ -181,7 +173,9 @@ export function App() {
 
   const activeScreenLabel = combatScreenVisible
     ? 'Battle stations'
-    : voyageScreen === 'roster'
+    : battlePreparationVisible
+      ? 'Battle party'
+      : voyageScreen === 'roster'
       ? 'Battle party'
       : voyageScreen === 'crew'
         ? 'Ship crew'
@@ -230,7 +224,7 @@ export function App() {
                 ['crew', 'Crew'],
               ] as Array<[VoyageScreen, string]>).map(([screen, label]) => (
                 <button
-                  aria-current={voyageScreen === screen ? 'page' : undefined}
+                  aria-current={displayedVoyageScreen === screen ? 'page' : undefined}
                   aria-label={screen === 'map' ? 'Open voyage chart' : screen === 'roster' ? 'Manage battle party' : 'Manage ship crew'}
                   onClick={() => setVoyageScreen(screen)}
                   type="button"
@@ -244,7 +238,7 @@ export function App() {
           )}
           <section className="voyage-stage" aria-label={activeScreenLabel}>
             <div className="stage-tab" aria-hidden="true">
-              <span>{combatScreenVisible ? '⚔' : voyageScreen === 'map' ? '⌖' : voyageScreen === 'roster' ? '☠' : '⚓'}</span>
+              <span>{combatScreenVisible ? '⚔' : displayedVoyageScreen === 'map' ? '⌖' : displayedVoyageScreen === 'roster' ? '☠' : '⚓'}</span>
               {activeScreenLabel}
             </div>
             {combatScreenVisible ? (
@@ -254,15 +248,23 @@ export function App() {
                     <PhaserCanvas view="battle" />
                   </section>
                 )}
-                onDefeat={() => resolveBattle('defeat')}
-                onVictory={() => resolveBattle('victory')}
+                onDefeat={() => {
+                  resolveBattle('defeat');
+                  resetBattle();
+                }}
+                onVictory={() => {
+                  resolveBattle('victory');
+                  resetBattle();
+                }}
                 revealBattleIq={revealBattleIq}
               />
+            ) : battlePreparationVisible ? (
+              <BattlePreparation onStart={beginEncounter} />
             ) : voyageScreen === 'roster' ? (
               <CrewManager view="roster" />
             ) : voyageScreen === 'crew' ? (
               <CrewManager view="roles" />
-            ) : rewardPending ? (
+            ) : rewardPending && (runPhase !== 'map' || Boolean(pendingPack)) ? (
               <RewardOutcomeScreen />
             ) : pendingPack ? (
               <PackOpeningScreen />
@@ -273,8 +275,6 @@ export function App() {
                 <NodePanel />
                 {canAssignRoles && <CrewManager view="roles" />}
               </>
-            ) : runPhase === 'battle' ? (
-              <BattlePreparation onStart={beginEncounter} />
             ) : runPhase === 'victory' ? (
               <>
                 <VictoryPanel onRestart={restartVoyage} />
@@ -284,8 +284,13 @@ export function App() {
               <section className="play-workspace map-workspace">
                 <section className="game-frame chart-frame" aria-label="Ocean map">
                   <PhaserCanvas view="map" />
-                  <MapControls />
+                  <MapControls disabled={mapTransitionPending} />
                 </section>
+                {rewardPending && (
+                  <div className="map-reward-overlay">
+                    <RewardReceiptPanel />
+                  </div>
+                )}
                 <div className="workspace-context"><VoyagePanel /></div>
               </section>
             )}

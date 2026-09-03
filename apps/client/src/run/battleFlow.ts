@@ -27,3 +27,10 @@ export function isBattleEncounterLoaded({
     activePartyIds.length === loadedPartyIds.length &&
     activePartyIds.every((id, index) => id === loadedPartyIds[index]);
 }
+
+export function shouldShowBattlePreparation(
+  runPhase: RunPhase,
+  encounterLoaded: boolean,
+): boolean {
+  return runPhase === 'battle' && !encounterLoaded;
+}
