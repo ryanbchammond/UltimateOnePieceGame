@@ -15,11 +15,17 @@ describe('persisted voyage flow', () => {
     useRunStore.getState().acknowledgeReward(false);
   });
 
-  it('resolves a drawn treasure and arrives only after the final event', () => {
+  it('resolves a drawn treasure, previews arrival on the map, then enters the destination', () => {
     expect(useRunStore.getState().beginVoyage(
       'barrel-at-sea',
       sequenceRandom([0, 0.31]),
     )).toBe(true);
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'map',
+      currentNodeId: 'barrel-at-sea',
+      mapTravelPending: true,
+    }));
+    expect(useRunStore.getState().completeTravelPreview()).toBe(true);
     expect(getCurrentVoyageEvent(useRunStore.getState())?.id).toBe('drifting-lockbox');
     expect(useRunStore.getState().resolveVoyageEvent('keep-ledger')).toBe(true);
 
@@ -32,6 +38,17 @@ describe('persisted voyage flow', () => {
     }));
 
     useRunStore.getState().acknowledgeReward();
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'map',
+      currentNodeId: 'barrel-at-sea',
+      pendingVoyage: expect.objectContaining({
+        fromNodeId: 'foosha-departure',
+        destinationNodeId: 'barrel-at-sea',
+        currentEventIndex: 1,
+      }),
+    }));
+
+    expect(useRunStore.getState().beginVoyage('barrel-at-sea')).toBe(true);
     expect(useRunStore.getState()).toEqual(expect.objectContaining({
       phase: 'node',
       currentNodeId: 'barrel-at-sea',
@@ -46,13 +63,47 @@ describe('persisted voyage flow', () => {
     )).toBe(true);
     const drawn = useRunStore.getState().pendingVoyage;
     expect(drawn?.eventIds).toHaveLength(3);
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'map',
+      mapTravelPending: true,
+    }));
+    expect(useRunStore.getState().completeTravelPreview()).toBe(true);
 
     const storage = useRunStore.persist.getOptions().storage!;
     const saved = await storage.getItem(runStorageKey);
     expect(saved?.state).toEqual(expect.objectContaining({
       phase: 'voyage',
+      mapTravelPending: false,
       pendingVoyage: drawn,
       voyageEventHistory: expect.arrayContaining(drawn?.eventIds ?? []),
+    }));
+  });
+
+  it('previews movement on the map even when a route has no voyage events', () => {
+    useRunStore.setState({
+      phase: 'map',
+      currentNodeId: 'alvida-deck',
+      completedNodeIds: ['foosha-departure', 'barrel-at-sea', 'alvida-deck'],
+      visitedNodeIds: ['foosha-departure', 'barrel-at-sea', 'alvida-deck'],
+      chosenBranches: { 'alvida-route': 'alvida-deck' },
+      pendingVoyage: null,
+      mapTravelPending: false,
+    });
+
+    expect(useRunStore.getState().beginVoyage('cobys-resolve', () => 0)).toBe(true);
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'map',
+      currentNodeId: 'cobys-resolve',
+      mapTravelPending: true,
+      pendingVoyage: expect.objectContaining({ eventIds: [] }),
+    }));
+
+    expect(useRunStore.getState().completeTravelPreview()).toBe(true);
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'node',
+      currentNodeId: 'cobys-resolve',
+      pendingVoyage: null,
+      mapTravelPending: false,
     }));
   });
 

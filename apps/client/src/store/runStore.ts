@@ -43,6 +43,7 @@ interface RunStoreState extends RunSnapshot {
   startRun: () => void;
   enterNode: (nodeId: string) => boolean;
   beginVoyage: (destinationNodeId: string, random?: () => number) => boolean;
+  completeTravelPreview: () => boolean;
   startVoyageBattle: () => boolean;
   resolveVoyageEvent: (choiceId: string) => boolean;
   resolveNode: (choiceId: string) => boolean;
@@ -107,6 +108,7 @@ function initialSnapshot(): RunSnapshot {
     rewardDestinationNodeId: null,
     rewardOriginNodeId: null,
     pendingVoyage: null,
+    mapTravelPending: false,
     voyageEventHistory: [],
   };
 }
@@ -123,6 +125,7 @@ function newRunSnapshot(): RunSnapshot {
     chosenBranches: {},
     artifacts: [],
     pendingVoyage: null,
+    mapTravelPending: false,
     voyageEventHistory: [],
     journal: [arc.start.journalEntry],
   };
@@ -175,6 +178,7 @@ export function migrateRunState(persistedState: unknown, version: number): RunSn
   const migrated: RunSnapshot = {
     ...snapshot,
     pendingVoyage: version >= 4 ? snapshot.pendingVoyage ?? null : null,
+    mapTravelPending: snapshot.mapTravelPending ?? false,
     voyageEventHistory: version >= 4 ? snapshot.voyageEventHistory ?? [] : [],
     characterHp: version >= 5 ? snapshot.characterHp ?? {} : {},
     pendingPack: snapshot.pendingPack
@@ -323,8 +327,9 @@ export const useRunStore = create<RunStoreState>()(
           set({
             currentNodeId: destination.id,
             visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
-            phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
-            pendingVoyage: null,
+            phase: 'map',
+            pendingVoyage: leg,
+            mapTravelPending: true,
             pendingPack: null,
             crewAssignmentWindow: null,
             latestReward: null,
@@ -334,8 +339,11 @@ export const useRunStore = create<RunStoreState>()(
           return true;
         }
         set({
-          phase: 'voyage',
+          phase: 'map',
+          currentNodeId: destination.id,
+          visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
           pendingVoyage: leg,
+          mapTravelPending: true,
           voyageEventHistory: [...(state.voyageEventHistory ?? []), ...leg.eventIds].slice(-24),
           pendingPack: null,
           crewAssignmentWindow: null,
@@ -343,6 +351,26 @@ export const useRunStore = create<RunStoreState>()(
           rewardPending: false,
           rewardDestinationNodeId: null,
           rewardOriginNodeId: null,
+        });
+        return true;
+      },
+
+      completeTravelPreview: () => {
+        const state = get();
+        const leg = state.pendingVoyage;
+        if (state.phase !== 'map' || !state.mapTravelPending || !leg) return false;
+
+        if (leg.eventIds.length > 0) {
+          set({ phase: 'voyage', mapTravelPending: false });
+          return true;
+        }
+
+        const destination = getStoryNode(leg.destinationNodeId);
+        if (!destination) return false;
+        set({
+          phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
+          pendingVoyage: null,
+          mapTravelPending: false,
         });
         return true;
       },
@@ -749,8 +777,9 @@ export const useRunStore = create<RunStoreState>()(
               set({
                 currentNodeId: destination.id,
                 visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
-                phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
-                pendingVoyage: null,
+                phase: 'map',
+                pendingVoyage: leg,
+                mapTravelPending: true,
                 rewardPending: false,
                 rewardDestinationNodeId: null,
                 rewardOriginNodeId: null,
@@ -758,8 +787,11 @@ export const useRunStore = create<RunStoreState>()(
               return;
             }
             set({
-              phase: 'voyage',
+              phase: 'map',
+              currentNodeId: destination.id,
+              visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
               pendingVoyage: leg,
+              mapTravelPending: true,
               voyageEventHistory: [...(state.voyageEventHistory ?? []), ...leg.eventIds].slice(-24),
               rewardPending: false,
               rewardDestinationNodeId: null,
@@ -770,8 +802,7 @@ export const useRunStore = create<RunStoreState>()(
           set({
             currentNodeId: destination.id,
             visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
-            phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
-            pendingVoyage: null,
+            phase: 'map',
             rewardPending: false,
             rewardDestinationNodeId: null,
             rewardOriginNodeId: null,

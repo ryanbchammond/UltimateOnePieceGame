@@ -136,22 +136,23 @@ export function RunStatus() {
 
   return (
     <section className="run-status" aria-label="Voyage resources">
-      <div>
-        <span>Berries</span>
-        <strong>{berries.toLocaleString()}</strong>
+      <div className="resource-stat berries-stat" title="Berries">
+        <span className="resource-icon" aria-hidden="true">฿</span>
+        <span className="resource-copy"><small>Berries</small><strong>{berries.toLocaleString()}</strong></span>
       </div>
-      <div>
-        <span>Bounty</span>
-        <strong>{bounty.toLocaleString()}</strong>
+      <div className="resource-stat bounty-stat" title="Bounty">
+        <span className="resource-icon" aria-hidden="true">★</span>
+        <span className="resource-copy"><small>Bounty</small><strong>{bounty.toLocaleString()}</strong></span>
       </div>
-      <div>
-        <span>Hull</span>
-        <strong>
-          {hull}/{maxHull}
-        </strong>
+      <div className="resource-stat hull-stat" title={`Hull ${hull} of ${maxHull}`}>
+        <span className="resource-icon" aria-hidden="true">♥</span>
+        <span className="resource-copy">
+          <small>Hull</small><strong>{hull}<i>/{maxHull}</i></strong>
+          <span className="hull-meter" aria-hidden="true"><span style={{ width: `${Math.max(0, (hull / maxHull) * 100)}%` }} /></span>
+        </span>
       </div>
       <div className="artifact-status">
-        <span>Artifacts</span>
+        <small>Relics</small>
         <ArtifactCollection artifactIds={artifacts} />
       </div>
     </section>
@@ -232,7 +233,7 @@ export function RewardOutcomeScreen() {
             ? `${voyageComplete ? 'Arrive at' : 'Set sail for'} ${destination.name}`
             : 'Continue voyage'}
         </button>
-        {destination && (
+        {destination && !voyageComplete && (
           <button className="text-action" onClick={() => acknowledgeReward(false)} type="button">
             Review map first
           </button>
@@ -280,14 +281,28 @@ export function VoyagePanel() {
     }
   };
 
+  if (run.mapTravelPending && run.pendingVoyage) {
+    const destination = getStoryNode(run.pendingVoyage.destinationNodeId);
+    return (
+      <section className="voyage-panel voyage-transit-card" aria-live="polite">
+        <p className="panel-label">Course plotted</p>
+        <span className="transit-kicker">Now under way</span>
+        <h2>{destination?.name ?? 'Next destination'}</h2>
+        <p>{destination?.subtitle ?? 'The crew is moving along the charted route.'}</p>
+        <span className="transit-progress" aria-hidden="true"><span /></span>
+      </section>
+    );
+  }
+
   return (
     <section className="voyage-panel">
       <div>
         <p className="panel-label">Choose your heading</p>
         <div className="destination-list">
-          {availableNodes.map((node) => (
+          {availableNodes.map((node, index) => (
             <button onClick={() => sailTo(node)} type="button" key={node.id}>
-              <span>{nodeTypeLabel(node)}</span>
+              <span className="choice-number" aria-hidden="true">{index + 1}</span>
+              <span className="destination-type">{nodeTypeLabel(node)}</span>
               <strong>{node.name}</strong>
               <small>{node.subtitle}</small>
             </button>

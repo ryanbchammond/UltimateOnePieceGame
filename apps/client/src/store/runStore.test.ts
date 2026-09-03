@@ -757,8 +757,9 @@ describe('Story run store', () => {
 
     useRunStore.getState().acknowledgeReward();
     expect(useRunStore.getState()).toEqual(expect.objectContaining({
-      phase: 'voyage',
-      currentNodeId: 'foosha-departure',
+      phase: 'map',
+      currentNodeId: 'barrel-at-sea',
+      mapTravelPending: true,
       rewardPending: false,
       rewardDestinationNodeId: null,
       pendingVoyage: expect.objectContaining({
@@ -766,6 +767,11 @@ describe('Story run store', () => {
         destinationNodeId: 'barrel-at-sea',
         currentEventIndex: 0,
       }),
+    }));
+    expect(useRunStore.getState().completeTravelPreview()).toBe(true);
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'voyage',
+      mapTravelPending: false,
     }));
     expect(useRunStore.getState().pendingVoyage?.eventIds.length).toBeGreaterThanOrEqual(1);
     expect(useRunStore.getState().pendingVoyage?.eventIds.length).toBeLessThanOrEqual(3);
