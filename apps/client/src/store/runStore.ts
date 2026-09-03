@@ -228,6 +228,37 @@ export function migrateRunState(persistedState: unknown, version: number): RunSn
     };
   }
 
+  if (version < 7 && migrated.pendingPack?.packId === 'syrup-village' &&
+    migrated.pendingPack.resume?.phase === 'victory') {
+    migrated.pendingPack = {
+      ...migrated.pendingPack,
+      resume: {
+        phase: 'map',
+        activeArcId: 'baratie',
+        currentNodeId: 'baratie-arrival',
+      },
+    };
+  }
+
+  if (
+    version < 7 &&
+    migrated.phase === 'victory' &&
+    migrated.activeArcId === 'syrup-village' &&
+    migrated.currentNodeId === 'the-going-merry'
+  ) {
+    return {
+      ...migrated,
+      phase: 'node',
+      activeArcId: 'baratie',
+      currentNodeId: 'baratie-arrival',
+      visitedNodeIds: [...new Set([...migrated.visitedNodeIds, 'baratie-arrival'])],
+      rewardPending: false,
+      rewardDestinationNodeId: null,
+      rewardOriginNodeId: null,
+      journal: [...migrated.journal, 'The Going Merry sailed onward to Baratie.'].slice(-12),
+    };
+  }
+
   return migrated;
 }
 
@@ -907,7 +938,7 @@ export const useRunStore = create<RunStoreState>()(
     }),
     {
       name: runStorageKey,
-      version: 6,
+      version: 7,
       storage: runStorage,
       migrate: migrateRunState,
     },

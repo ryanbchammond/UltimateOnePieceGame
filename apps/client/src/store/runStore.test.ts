@@ -822,7 +822,7 @@ describe('Story run store', () => {
     ['believe-usopp', 'syrup-north-slope', 'fortify-the-slope', 535, 17_900],
     ['follow-the-money', 'syrup-mansion-grounds', 'guard-kayas-household', 640, 17_170],
   ] as const)(
-    'completes the Syrup Village %s route, recruits Usopp, and closes the third arc',
+    'completes the Syrup Village %s route, recruits Usopp, and continues to Baratie',
     (warningChoice, encounterId, restChoice, expectedBerries, expectedBounty) => {
       beginSyrupVillage();
       expect(useRunStore.getState().resolveNode('hear-usopp-out')).toBe(true);
@@ -863,11 +863,12 @@ describe('Story run store', () => {
       for (const card of pack.cards) useRunStore.getState().revealPackCard(card.cardId);
       expect(useRunStore.getState().claimPackCard(pack.cards[0].cardId)).toBe(true);
       expect(useRunStore.getState()).toEqual(expect.objectContaining({
-        phase: 'victory',
-        activeArcId: 'syrup-village',
-        currentNodeId: 'the-going-merry',
+        phase: 'map',
+        activeArcId: 'baratie',
+        currentNodeId: 'baratie-arrival',
         pendingPack: null,
         rewardPending: true,
+        rewardDestinationNodeId: 'baratie-arrival',
       }));
     },
   );
@@ -913,11 +914,147 @@ describe('Story run store', () => {
     });
   });
 
+  it('migrates completed Syrup Village saves into the expanded Baratie campaign', () => {
+    useRunStore.getState().startRun();
+    const base = useRunStore.getState();
+    const migrated = migrateRunState({
+      ...base,
+      phase: 'victory',
+      activeArcId: 'syrup-village',
+      currentNodeId: 'the-going-merry',
+      visitedNodeIds: ['the-going-merry'],
+    }, 6);
+
+    expect(migrated).toEqual(expect.objectContaining({
+      phase: 'node',
+      activeArcId: 'baratie',
+      currentNodeId: 'baratie-arrival',
+      rewardPending: false,
+    }));
+    expect(migrated.visitedNodeIds).toContain('baratie-arrival');
+
+    const pending = migrateRunState({
+      ...base,
+      pendingPack: {
+        id: 'syrup-village-1', packId: 'syrup-village', packNumber: 1,
+        source: 'arc-reward', stage: 'sealed', cards: [],
+        resume: {
+          phase: 'victory', activeArcId: 'syrup-village', currentNodeId: 'the-going-merry',
+        },
+      },
+    }, 6);
+    expect(pending.pendingPack?.resume).toEqual({
+      phase: 'map', activeArcId: 'baratie', currentNodeId: 'baratie-arrival',
+    });
+  });
+
+  it('progresses from Baratie through both long-form Arlong decisions to the Saga pack', () => {
+    useRunStore.getState().startRun();
+    useRunStore.setState({
+      phase: 'node', activeArcId: 'baratie', currentNodeId: 'baratie-arrival',
+      checkpointNodeId: 'the-going-merry', completedNodeIds: ['the-going-merry'],
+      visitedNodeIds: ['the-going-merry', 'baratie-arrival'], chosenBranches: {},
+      berries: 500, bounty: 20_000, hull: 90,
+      rosterIds: ['luffy', 'zoro', 'nami', 'usopp'], guestIds: [],
+      activePartyIds: ['luffy', 'zoro', 'nami', 'usopp'],
+      roleAssignments: {
+        ...orangeTownArc.start.roleAssignments,
+        navigator: 'nami', 'fighter-2': 'usopp',
+      },
+      pendingPack: null, rewardPending: false, latestReward: null,
+    });
+
+    expect(useRunStore.getState().resolveNode('work-off-the-debt')).toBe(true);
+    expect(useRunStore.getState().enterNode('gin-at-the-table')).toBe(true);
+    expect(useRunStore.getState().resolveNode('share-sanjis-meal')).toBe(true);
+    expect(useRunStore.getState().guestIds).toContain('sanji');
+    expect(useRunStore.getState().enterNode('krieg-armada-appears')).toBe(true);
+    expect(useRunStore.getState().resolveNode('raid-the-cannon-line')).toBe(true);
+    expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id))
+      .toEqual(['silence-krieg-cannons']);
+    expect(useRunStore.getState().enterNode('silence-krieg-cannons')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().enterNode('mihawks-challenge')).toBe(true);
+    expect(useRunStore.getState().resolveNode('honor-zoros-vow')).toBe(true);
+    expect(useRunStore.getState().enterNode('baratie-galley')).toBe(true);
+    expect(useRunStore.getState().resolveNode('cook-a-victory-feast')).toBe(true);
+    expect(useRunStore.getState().enterNode('krieg-officers-attack')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().enterNode('krieg-last-stand')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().enterNode('all-blue-departure')).toBe(true);
+    expect(useRunStore.getState().resolveNode('welcome-sanji-aboard')).toBe(true);
+    expect(useRunStore.getState().rosterIds).toContain('sanji');
+    claimCurrentPack();
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'map', activeArcId: 'arlong-park', currentNodeId: 'cocoyasi-shore',
+    }));
+
+    expect(useRunStore.getState().enterNode('cocoyasi-shore')).toBe(true);
+    expect(useRunStore.getState().resolveNode('follow-nami-home')).toBe(true);
+    expect(useRunStore.getState().enterNode('cocoyasi-under-arlong')).toBe(true);
+    expect(useRunStore.getState().resolveNode('follow-captain-nezumi')).toBe(true);
+    expect(useRunStore.getState().enterNode('expose-nezumis-cover-up')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().enterNode('namis-map-room')).toBe(true);
+    expect(useRunStore.getState().resolveNode('refuse-arlongs-bargain')).toBe(true);
+    expect(useRunStore.getState().enterNode('nami-asks-for-help')).toBe(true);
+    expect(useRunStore.getState().resolveNode('place-the-straw-hat')).toBe(true);
+    expect(useRunStore.getState().enterNode('bellemere-grave')).toBe(true);
+    expect(useRunStore.getState().resolveNode('share-sanjis-rations')).toBe(true);
+    expect(useRunStore.getState().enterNode('walk-to-arlong-park')).toBe(true);
+    expect(useRunStore.getState().resolveNode('rally-gosa-village')).toBe(true);
+    expect(getAvailableNodes(useRunStore.getState()).map((node) => node.id))
+      .toEqual(['free-gosa-village']);
+    expect(useRunStore.getState().enterNode('free-gosa-village')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().enterNode('arlong-park-courtyard')).toBe(true);
+    expect(useRunStore.getState().resolveNode('free-the-cartographers')).toBe(true);
+    expect(useRunStore.getState().enterNode('arlong-park-raid')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().enterNode('cocoyasi-dawn')).toBe(true);
+    expect(useRunStore.getState().resolveNode('sail-with-nami-again')).toBe(true);
+    claimCurrentPack();
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'map', activeArcId: 'loguetown', currentNodeId: 'loguetown-harbor',
+    }));
+
+    expect(useRunStore.getState().enterNode('loguetown-harbor')).toBe(true);
+    expect(useRunStore.getState().resolveNode('prepare-for-the-grand-line')).toBe(true);
+    expect(useRunStore.getState().enterNode('town-of-beginnings-and-ends')).toBe(true);
+    expect(useRunStore.getState().resolveNode('find-zoro-new-swords')).toBe(true);
+    expect(useRunStore.getState().enterNode('ipponmatsu-sword-shop')).toBe(true);
+    expect(useRunStore.getState().resolveNode('test-zoros-luck')).toBe(true);
+    expect(useRunStore.getState().enterNode('gold-rogers-platform')).toBe(true);
+    expect(useRunStore.getState().resolveNode('declare-the-grand-line-dream')).toBe(true);
+    expect(useRunStore.getState().enterNode('storm-over-loguetown')).toBe(true);
+    expect(useRunStore.getState().resolveNode('ready-the-going-merry')).toBe(true);
+    expect(useRunStore.getState().enterNode('smoker-pursuit')).toBe(true);
+    useRunStore.getState().resolveBattle('victory');
+    expect(useRunStore.getState().enterNode('reverse-mountain-bound')).toBe(true);
+    expect(useRunStore.getState().resolveNode('make-the-barrel-vow')).toBe(true);
+    expect(useRunStore.getState().pendingPack).toEqual(expect.objectContaining({
+      packId: 'east-blue-saga', source: 'saga-reward',
+    }));
+    claimCurrentPack();
+    expect(useRunStore.getState()).toEqual(expect.objectContaining({
+      phase: 'victory', activeArcId: 'loguetown', currentNodeId: 'reverse-mountain-bound',
+    }));
+  });
+
 });
 
 function sequenceRandom(...values: number[]): () => number {
   let index = 0;
   return () => values[index++] ?? values.at(-1) ?? 0;
+}
+
+function claimCurrentPack(): void {
+  const pack = useRunStore.getState().pendingPack!;
+  expect(pack).toBeTruthy();
+  expect(useRunStore.getState().openPendingPack()).toBe(true);
+  for (const card of pack.cards) useRunStore.getState().revealPackCard(card.cardId);
+  expect(useRunStore.getState().claimPackCard(pack.cards[0].cardId)).toBe(true);
 }
 
 function reachBarrel(fooshaChoice = 'pack-provisions'): void {

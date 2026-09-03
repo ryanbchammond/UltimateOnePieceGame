@@ -309,6 +309,47 @@ describe('Story encounters', () => {
     expect(result.battle.status).toBe('victory');
   });
 
+  it.each<EncounterId>([
+    'baratie-deck-brawl',
+    'baratie-cannon-line',
+    'krieg-officers',
+    'krieg-last-stand',
+    'arlong-coast-patrol',
+    'nezumi-cover-up',
+    'arlong-front-gate',
+    'gosa-road',
+    'arlong-sea-wall',
+    'arlong-park-raid',
+    'loguetown-execution-plaza',
+    'loguetown-marine-cordon',
+    'smoker-pursuit',
+  ])('keeps the authored %s encounter complete and winnable for an East Blue party', (id) => {
+    const definitions = getEncounterFighters(id, ['luffy', 'zoro', 'sanji', 'nami']);
+    const enemies = definitions.filter((fighter) => fighter.side === 'enemy');
+
+    expect(enemies.length).toBeGreaterThanOrEqual(2);
+    expect(enemies.length).toBeLessThanOrEqual(4);
+    expect(enemies.every((fighter) => fighter.moves.length === 4)).toBe(true);
+    expect(new Set(enemies.map((fighter) => fighter.id)).size).toBe(enemies.length);
+    expect(() => createBattle(definitions)).not.toThrow();
+    expect(playWithBasicFocusFire(id, ['luffy', 'zoro', 'sanji', 'nami']).battle.status)
+      .toBe('victory');
+  });
+
+  it('keeps Krieg’s officer fight and immediate last stand winnable with persistent PP', () => {
+    const party: CharacterId[] = ['luffy', 'zoro', 'sanji', 'nami'];
+    const officers = playWithBasicFocusFire('krieg-officers', party);
+    expect(officers.battle.status).toBe('victory');
+
+    const krieg = playWithBasicFocusFire(
+      'krieg-last-stand',
+      party,
+      officers.characterMovePp,
+    );
+    expect(krieg.actions).toBeLessThan(100);
+    expect(krieg.battle.status).toBe('victory');
+  });
+
   it('applies the Cook max-HP bonus only to the active player party', () => {
     const definitions = getEncounterFighters(
       'shells-town',

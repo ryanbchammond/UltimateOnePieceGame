@@ -13,7 +13,10 @@ export type StoryArcId =
   | 'east-blue-prototype'
   | 'romance-dawn'
   | 'orange-town'
-  | 'syrup-village';
+  | 'syrup-village'
+  | 'baratie'
+  | 'arlong-park'
+  | 'loguetown';
 export type MapNodeType =
   | 'start'
   | 'battle'
@@ -37,6 +40,19 @@ export type EncounterId =
   | 'syrup-north-slope'
   | 'syrup-mansion-grounds'
   | 'black-cat-raid'
+  | 'baratie-deck-brawl'
+  | 'baratie-cannon-line'
+  | 'krieg-officers'
+  | 'krieg-last-stand'
+  | 'arlong-coast-patrol'
+  | 'nezumi-cover-up'
+  | 'arlong-front-gate'
+  | 'gosa-road'
+  | 'arlong-sea-wall'
+  | 'arlong-park-raid'
+  | 'loguetown-execution-plaza'
+  | 'loguetown-marine-cordon'
+  | 'smoker-pursuit'
   | 'voyage-alvida-raiders'
   | 'voyage-marine-patrol'
   | 'voyage-buggy-scouts'
@@ -87,7 +103,11 @@ export type CardPackId =
   | 'baratie-east-blue'
   | 'romance-dawn'
   | 'orange-town'
-  | 'syrup-village';
+  | 'syrup-village'
+  | 'baratie'
+  | 'arlong-park'
+  | 'loguetown'
+  | 'east-blue-saga';
 
 export interface RewardChange {
   label: string;
@@ -160,7 +180,7 @@ export interface CardPackOpening {
   id: string;
   packId: CardPackId;
   packNumber: number;
-  source: 'paid' | 'arc-reward';
+  source: 'paid' | 'arc-reward' | 'saga-reward';
   stage?: 'sealed' | 'cards';
   cards: CardPullResult[];
   resume?: {
@@ -263,6 +283,9 @@ export type VoyageContext =
   | 'shells-town'
   | 'orange-town'
   | 'syrup-village'
+  | 'baratie'
+  | 'arlong-park'
+  | 'loguetown'
   | 'immediate';
 
 export interface StoryTravelRule {

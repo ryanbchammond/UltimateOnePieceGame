@@ -24,6 +24,12 @@ describe('voyage event deck', () => {
       .toEqual({ context: 'open-sea', minEvents: 1, maxEvents: 3 });
     expect(getStoryTravelRule('syrup-village-shore', 'usopps-warning'))
       .toEqual({ context: 'syrup-village', minEvents: 0, maxEvents: 2 });
+    expect(getStoryTravelRule('the-going-merry', 'baratie-arrival'))
+      .toEqual({ context: 'open-sea', minEvents: 1, maxEvents: 3 });
+    expect(getStoryTravelRule('all-blue-departure', 'cocoyasi-shore'))
+      .toEqual({ context: 'open-sea', minEvents: 1, maxEvents: 3 });
+    expect(getStoryTravelRule('cocoyasi-dawn', 'loguetown-harbor'))
+      .toEqual({ context: 'open-sea', minEvents: 1, maxEvents: 3 });
   });
   it('draws and persists a random one-to-three unique events for a leg', () => {
     const one = createVoyageLeg({
@@ -94,7 +100,15 @@ describe('voyage event deck', () => {
     expect(getWantedPressure(6000)).toBe('high');
   });
 
-  it.each(['romance-dawn', 'orange-town', 'syrup-village', 'east-blue-prototype'] as const)(
+  it.each([
+    'romance-dawn',
+    'orange-town',
+    'syrup-village',
+    'baratie',
+    'arlong-park',
+    'loguetown',
+    'east-blue-prototype',
+  ] as const)(
     'gives %s every voyage family and a no-cost fallback for non-battles',
     (arcId) => {
       const events = Object.values(voyageEventDefinitions)

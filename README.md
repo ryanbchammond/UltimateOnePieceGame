@@ -24,8 +24,8 @@ The client runs at `http://localhost:5173`. The server health endpoint is availa
 
 ## Playable campaign
 
-The active build contains **Romance Dawn**, **Orange Town**, and **Syrup Village** using Story Mode
-and Landlubber difficulty:
+The active build contains the complete **East Blue Saga**—Romance Dawn, Orange Town, Syrup
+Village, Baratie, Arlong Park, and Loguetown—using Story Mode and Landlubber difficulty:
 
 - Begin at Foosha Village with 75 Berries and 90/100 hull
 - Choose extra provisions or a fully repaired tiny boat before departure
@@ -54,7 +54,16 @@ and Landlubber difficulty:
 - Defeat Captain Kuro, Jango, Sham, and Buchi in the four-unit Black Cat Pirates climax
 - Recruit Usopp permanently, receive the Going Merry, and open a free Syrup Village pack featuring
   Usopp and Kuro
-- Finish at a three-arc campaign summary with the full crew, bounty, and resources preserved
+- Defend Baratie through one of three opening routes, witness Zoro’s challenge to Mihawk, defeat
+  Krieg’s officers and Don Krieg, then recruit Sanji permanently as the crew’s Cook
+- Investigate Arlong’s occupation through one of three Cocoyasi routes, answer Nami’s plea for
+  help, and choose one of three assaults on the longest map in the East Blue campaign
+- Defeat Arlong and his officers, free Cocoyasi Village, and sail with Nami toward Loguetown
+- Prepare for the Grand Line through one of three Loguetown routes, visit Gol D. Roger’s execution
+  platform, and break through Smoker’s pursuit during the storm
+- Complete the six-arc saga at Reverse Mountain with the full crew, bounty, and resources preserved
+- Receive a five-card East Blue Saga pack drawn from every arc pool, with 60% combined Rare, Epic,
+  and Legendary odds instead of the standard arc pack’s 32%
 - Use any one to four currently available permanent or guest characters without locked story slots
 - Manage battle composition independently from the ten permanent ship-role assignments
 - Track Berries, bounty, hull, PP, checkpoints, outcome receipts, and the captain's journal
@@ -67,7 +76,7 @@ and Landlubber difficulty:
 
 The five-card keep-one system, six rarities, shards, star upgrades, role effects, artifacts, and the
 legacy East Blue prototype remain implemented and covered as reusable foundations. The active
-Story Mode campaign now runs from Romance Dawn through Syrup Village.
+Story Mode campaign now runs from Romance Dawn through Loguetown.
 
 ## Voyage interface
 
@@ -87,8 +96,8 @@ Milestone 11 uses a Slay-the-Spire-inspired route presentation with a nautical m
 - Every combat first opens the battle-party preparation scene. The battlefield is created only
   after the player confirms the active lineup.
 
-The Milestone 11 build is approved and synchronized on `origin/dev` at `6a9197c`. Full milestone
-playtesting remains pending before any promotion to `main`.
+The Milestone 11 build and playtest are approved. Development after that approval extends the
+campaign through the remainder of the East Blue Saga before Milestone 12 begins.
 
 Enemy turns resolve automatically. On a crew turn, click or tap a living enemy on the battlefield,
 or use the synchronized keyboard-accessible target list, then choose one of the acting fighter's
@@ -102,9 +111,12 @@ packs provide additional characters. The implemented legacy Baratie pack contain
 Rare-or-higher slot, and uses provisional 60% Common, 35% Rare, and 5% Legendary odds per normal
 slot. Featured characters receive 3x selection weight within their rarity. The full rarity model
 also supports Uncommon, Epic, and Mythical. The free Romance Dawn pack uses 48% Common, 20%
-Uncommon, 25% Rare, 6% Epic, and 1% Legendary odds, with Coby, Helmeppo, Alvida, and Morgan featured
+Uncommon, 25% Rare, 6% Epic, and 1% Legendary odds, with Luffy, Coby, Helmeppo, Alvida, and Morgan featured
 at 3x weight within their rarity. Orange Town and Syrup Village use the same rarity table; the
-Syrup Village pack features Usopp and Captain Kuro.
+Syrup Village pack features Usopp and Captain Kuro. Baratie and Arlong Park add their own free arc
+packs, while Loguetown’s pool rolls into the saga reward. Completing Loguetown awards the East Blue
+Saga pack: it contains the union of all arc-card pools and uses 25% Common, 15% Uncommon, 35% Rare,
+15% Epic, and 10% Legendary odds.
 Reduced-motion preferences suppress every standard, enhanced, special, aura, and smoke reveal
 animation while preserving the card rarity and selection information.
 Future Free-Roam and Chaos modes will use pack-driven recruitment.

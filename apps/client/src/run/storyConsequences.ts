@@ -333,7 +333,7 @@ export function applyStoryConsequences(
       pendingPack: createCardPackOpening(
         pack,
         packNumber,
-        'arc-reward',
+        consequence.packId === 'east-blue-saga' ? 'saga-reward' : 'arc-reward',
         random,
         consequence.resume,
       ),

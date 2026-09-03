@@ -101,18 +101,18 @@ export function RunSetup() {
   return (
     <section className="setup-screen">
       <div className="setup-copy">
-        <p className="eyebrow">Three-arc development campaign</p>
+        <p className="eyebrow">Complete East Blue campaign</p>
         <h2>Set sail from Foosha Village</h2>
         <p>
-          Begin Luffy's voyage, recruit Zoro and Nami, then believe Usopp and stop Captain Kuro's
-          raid on Syrup Village.
+          Begin Luffy's voyage, assemble the first five Straw Hats, free Cocoyasi, and escape
+          Loguetown on the road to the Grand Line.
         </p>
       </div>
       <div className="run-settings" aria-label="Run settings">
         <div>
           <span>Mode</span>
           <strong>Story</strong>
-          <small>Romance Dawn through Syrup Village</small>
+          <small>Romance Dawn through Loguetown</small>
         </div>
         <div>
           <span>Difficulty</span>
@@ -893,6 +893,8 @@ function TavernPanel({ focused = false }: { focused?: boolean }) {
   const rosterIds = useRunStore((state) => state.rosterIds);
   const displayedPack = pendingPack ? getCardPack(pendingPack.packId) : baratieCardPack;
   const arcReward = pendingPack?.source === 'arc-reward';
+  const sagaReward = pendingPack?.source === 'saga-reward';
+  const rewardPack = arcReward || sagaReward;
   const canAffordPack = berries >= baratieCardPack.cost;
   const allRevealed = pendingPack?.cards.every((card) => card.revealed) ?? false;
   const cardsRemaining = pendingPack?.cards.filter((card) => !card.revealed).length ?? 0;
@@ -901,7 +903,7 @@ function TavernPanel({ focused = false }: { focused?: boolean }) {
     return (
       <section className={`pack-screen pack-${pendingPack.packId}`} aria-labelledby="sealed-pack-heading">
         <div className="pack-screen-copy">
-          <p className="eyebrow">{arcReward ? 'Arc completion reward' : 'Tavern purchase'}</p>
+          <p className="eyebrow">{sagaReward ? 'Saga completion reward' : arcReward ? 'Arc completion reward' : 'Tavern purchase'}</p>
           <h2 id="sealed-pack-heading">{displayedPack.name}</h2>
           <p>Five hidden candidates wait inside. Reveal every card, then keep exactly one.</p>
         </div>
@@ -922,7 +924,7 @@ function TavernPanel({ focused = false }: { focused?: boolean }) {
   return (
     <section className={`tavern-panel ${focused ? 'pack-screen reveal-screen' : ''}`} aria-labelledby="tavern-heading">
       <div className="tavern-copy">
-        <p className="panel-label">{arcReward ? 'Arc completion reward' : 'Baratie card counter'}</p>
+        <p className="panel-label">{sagaReward ? 'Saga completion reward' : arcReward ? 'Arc completion reward' : 'Baratie card counter'}</p>
         <h3 id="tavern-heading">{displayedPack.name}</h3>
         <p>
           Reveal five character cards, then choose one to keep. One card is guaranteed Rare or
@@ -936,7 +938,7 @@ function TavernPanel({ focused = false }: { focused?: boolean }) {
             </span>
           ))}
         </div>
-        {!arcReward && (
+        {!rewardPack && (
           <>
             <button
               className="primary-action"
@@ -1042,15 +1044,15 @@ export function VictoryPanel({ onRestart }: { onRestart: () => void }) {
 
   return (
     <section className="victory-panel">
-      <p className="eyebrow">Three-arc campaign complete</p>
-      <h2>Syrup Village is safe!</h2>
+      <p className="eyebrow">East Blue Saga complete</p>
+      <h2>The Grand Line awaits!</h2>
       <p>
-        Luffy completed Romance Dawn, Orange Town, and Syrup Village with a{' '}
+        Luffy completed all six East Blue story arcs with a{' '}
         {bounty.toLocaleString()} bounty, {berries.toLocaleString()} Berries, and{' '}
         {rosterIds.length} permanent crew cards.
       </p>
       <div className="campaign-summary-grid">
-        <div><span>Arcs cleared</span><strong>3</strong></div>
+        <div><span>Arcs cleared</span><strong>6</strong></div>
         <div><span>Permanent roster</span><strong>{rosterIds.length}</strong></div>
         <div><span>Journal entries</span><strong>{journal.length}</strong></div>
       </div>

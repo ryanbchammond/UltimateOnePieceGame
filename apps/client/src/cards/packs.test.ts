@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   baratieCardPack,
+  baratieStoryCardPack,
   cardsPerPack,
   cardRarityOrder,
   cardRevealTiers,
   drawCardFromPack,
   drawCardsFromPack,
+  eastBlueSagaCardPack,
   featuredCharacterWeight,
   getCardAnimationKey,
+  arlongParkCardPack,
+  loguetownCardPack,
   orangeTownCardPack,
   romanceDawnCardPack,
   syrupVillageCardPack,
@@ -89,6 +93,7 @@ describe('card packs', () => {
       mythical: 0,
     });
     expect(romanceDawnCardPack.characterIds).toEqual([
+      'luffy',
       'coby',
       'johnny',
       'yosaku',
@@ -100,13 +105,14 @@ describe('card packs', () => {
       'smoker',
     ]);
     expect(romanceDawnCardPack.featuredCharacterIds)
-      .toEqual(['coby', 'helmeppo', 'alvida', 'morgan']);
+      .toEqual(['luffy', 'coby', 'helmeppo', 'alvida', 'morgan']);
 
     expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0, 0))).toBe('coby');
     expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.5, 0))).toBe('helmeppo');
     expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.7, 0))).toBe('alvida');
     expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.95, 0))).toBe('morgan');
-    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.995, 0))).toBe('smoker');
+    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.995, 0))).toBe('luffy');
+    expect(drawCardFromPack(romanceDawnCardPack, sequenceRandom(0.995, 0.99))).toBe('smoker');
   });
 
   it('weights Romance Dawn featured cards within rarity and guarantees Rare or better', () => {
@@ -150,6 +156,34 @@ describe('card packs', () => {
       syrupVillageCardPack,
       sequenceRandom(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
     )).toHaveLength(5);
+  });
+
+  it('rewards completing East Blue with every arc card and improved rare-card odds', () => {
+    const arcPools = [
+      romanceDawnCardPack,
+      orangeTownCardPack,
+      syrupVillageCardPack,
+      baratieStoryCardPack,
+      arlongParkCardPack,
+      loguetownCardPack,
+    ];
+    const everyArcCard = new Set(arcPools.flatMap((pack) => pack.characterIds));
+
+    expect(new Set(eastBlueSagaCardPack.characterIds)).toEqual(everyArcCard);
+    expect(eastBlueSagaCardPack.cost).toBe(0);
+    expect(eastBlueSagaCardPack.guaranteedRarity).toBe('rare');
+    expect(
+      eastBlueSagaCardPack.rarityOdds.rare +
+      eastBlueSagaCardPack.rarityOdds.epic +
+      eastBlueSagaCardPack.rarityOdds.legendary,
+    ).toBeGreaterThan(
+      romanceDawnCardPack.rarityOdds.rare +
+      romanceDawnCardPack.rarityOdds.epic +
+      romanceDawnCardPack.rarityOdds.legendary,
+    );
+    expect(eastBlueSagaCardPack.rarityOdds).toEqual({
+      common: 25, uncommon: 15, rare: 35, epic: 15, legendary: 10, mythical: 0,
+    });
   });
 });
 

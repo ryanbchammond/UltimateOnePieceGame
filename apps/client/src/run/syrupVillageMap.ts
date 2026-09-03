@@ -262,7 +262,7 @@ export const syrupVillageChoices: Record<string, NodeChoice[]> = {
     {
       id: 'welcome-usopp-aboard',
       label: 'Welcome Usopp aboard the Going Merry',
-      detail: 'Recruit Usopp permanently, restore the new ship’s hull, and open the free Syrup Village pack.',
+      detail: 'Recruit Usopp permanently, restore the new ship’s hull, and open the free Syrup Village pack before sailing to Baratie.',
       consequences: [
         { type: 'guest', action: 'remove', characterId: 'usopp' },
         {
@@ -276,15 +276,15 @@ export const syrupVillageChoices: Record<string, NodeChoice[]> = {
           type: 'pack',
           packId: 'syrup-village',
           resume: {
-            phase: 'victory',
-            activeArcId: 'syrup-village',
-            currentNodeId: 'the-going-merry',
+            phase: 'map',
+            activeArcId: 'baratie',
+            currentNodeId: 'baratie-arrival',
           },
         },
       ],
       outcome: {
         title: 'Syrup Village complete',
-        detail: 'Usopp joins the permanent crew and the Going Merry is ready to sail.',
+        detail: 'Usopp joins the permanent crew and the Going Merry is ready to sail for Baratie.',
         journalEntry: 'Usopp joined the crew and Kaya gifted them the Going Merry.',
       },
     },

@@ -147,4 +147,24 @@ describe('story content registry', () => {
     expect(getAvailableNodes(run).map((node) => node.id))
       .toEqual(['alvida-deck', 'alvida-hold']);
   });
+
+  it('scales the final East Blue maps to arc complexity and authors every story decision', () => {
+    const baratie = getStoryNodesForArc('baratie');
+    const arlongPark = getStoryNodesForArc('arlong-park');
+    const loguetown = getStoryNodesForArc('loguetown');
+
+    expect(arlongPark.length).toBeGreaterThan(baratie.length);
+    expect(baratie.length).toBeGreaterThan(loguetown.length);
+    expect(baratie.filter((node) => node.branch === 'baratie-defense-route')).toHaveLength(3);
+    expect(arlongPark.filter((node) => node.branch === 'cocoyasi-investigation-route')).toHaveLength(3);
+    expect(arlongPark.filter((node) => node.branch === 'arlong-assault-route')).toHaveLength(3);
+    expect(loguetown.filter((node) => node.branch === 'loguetown-route')).toHaveLength(3);
+
+    for (const node of [...baratie, ...arlongPark, ...loguetown]) {
+      if (node.type !== 'battle' && node.type !== 'boss') {
+        expect(storyNodeChoices[node.id]?.length, `${node.id} needs a story choice`)
+          .toBeGreaterThan(0);
+      }
+    }
+  });
 });

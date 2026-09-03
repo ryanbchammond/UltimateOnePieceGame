@@ -84,6 +84,7 @@ export const romanceDawnCardPack: CardPackDefinition = {
     mythical: 0,
   },
   characterIds: [
+    'luffy',
     'coby',
     'johnny',
     'yosaku',
@@ -94,7 +95,7 @@ export const romanceDawnCardPack: CardPackDefinition = {
     'morgan',
     'smoker',
   ],
-  featuredCharacterIds: ['coby', 'helmeppo', 'alvida', 'morgan'],
+  featuredCharacterIds: ['luffy', 'coby', 'helmeppo', 'alvida', 'morgan'],
   featuredCharacterWeight,
 };
 
@@ -166,11 +167,83 @@ export const syrupVillageCardPack: CardPackDefinition = {
   featuredCharacterWeight,
 };
 
+const sagaRarityOdds: Record<CardRarity, number> = {
+  common: 48,
+  uncommon: 20,
+  rare: 25,
+  epic: 6,
+  legendary: 1,
+  mythical: 0,
+};
+
+export const baratieStoryCardPack: CardPackDefinition = {
+  id: 'baratie',
+  name: 'Baratie Card Pack',
+  cost: 0,
+  cardCount: cardsPerPack,
+  guaranteedRarity: 'rare',
+  rarityOdds: sagaRarityOdds,
+  characterIds: ['johnny', 'yosaku', 'mohji', 'helmeppo', 'cabaji', 'gin', 'nami', 'kuro', 'morgan', 'sanji', 'smoker'],
+  featuredCharacterIds: ['gin', 'sanji'],
+  featuredCharacterWeight,
+};
+
+export const arlongParkCardPack: CardPackDefinition = {
+  id: 'arlong-park',
+  name: 'Arlong Park Card Pack',
+  cost: 0,
+  cardCount: cardsPerPack,
+  guaranteedRarity: 'rare',
+  rarityOdds: sagaRarityOdds,
+  characterIds: ['johnny', 'yosaku', 'richie', 'helmeppo', 'cabaji', 'nami', 'gin', 'kuro', 'morgan', 'zoro', 'sanji', 'smoker'],
+  featuredCharacterIds: ['nami'],
+  featuredCharacterWeight,
+};
+
+export const loguetownCardPack: CardPackDefinition = {
+  id: 'loguetown',
+  name: 'Loguetown Card Pack',
+  cost: 0,
+  cardCount: cardsPerPack,
+  guaranteedRarity: 'rare',
+  rarityOdds: sagaRarityOdds,
+  characterIds: ['coby', 'johnny', 'yosaku', 'helmeppo', 'cabaji', 'tashigi', 'gin', 'buggy', 'kuro', 'morgan', 'smoker'],
+  featuredCharacterIds: ['tashigi', 'smoker'],
+  featuredCharacterWeight,
+};
+
+export const eastBlueSagaCardPack: CardPackDefinition = {
+  id: 'east-blue-saga',
+  name: 'East Blue Saga Pack',
+  cost: 0,
+  cardCount: cardsPerPack,
+  guaranteedRarity: 'rare',
+  rarityOdds: {
+    common: 25,
+    uncommon: 15,
+    rare: 35,
+    epic: 15,
+    legendary: 10,
+    mythical: 0,
+  },
+  characterIds: [
+    'luffy', 'alvida', 'morgan', 'helmeppo', 'zoro', 'sanji', 'nami', 'usopp',
+    'coby', 'johnny', 'yosaku', 'tashigi', 'gin', 'buggy', 'mohji', 'richie',
+    'cabaji', 'smoker', 'kuro',
+  ],
+  featuredCharacterIds: ['luffy', 'zoro', 'sanji', 'nami', 'usopp', 'smoker'],
+  featuredCharacterWeight,
+};
+
 export const cardPacks: Record<CardPackId, CardPackDefinition> = {
   'baratie-east-blue': baratieCardPack,
   'romance-dawn': romanceDawnCardPack,
   'orange-town': orangeTownCardPack,
   'syrup-village': syrupVillageCardPack,
+  'baratie': baratieStoryCardPack,
+  'arlong-park': arlongParkCardPack,
+  'loguetown': loguetownCardPack,
+  'east-blue-saga': eastBlueSagaCardPack,
 };
 
 export function getCardPack(packId: CardPackId): CardPackDefinition {

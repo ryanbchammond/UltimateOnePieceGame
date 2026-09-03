@@ -60,7 +60,7 @@ export const voyageEventDefinitions: Record<VoyageEventId, VoyageEventDefinition
   },
   'marine-longboat': {
     id: 'marine-longboat',
-    arcIds: ['romance-dawn', 'east-blue-prototype'],
+    arcIds: ['romance-dawn', 'baratie', 'arlong-park', 'loguetown', 'east-blue-prototype'],
     contexts: ['open-sea'],
     category: 'battle',
     name: 'Marine Longboat',
@@ -80,7 +80,7 @@ export const voyageEventDefinitions: Record<VoyageEventId, VoyageEventDefinition
   },
   'drifting-lockbox': {
     id: 'drifting-lockbox',
-    arcIds: ['romance-dawn', 'east-blue-prototype'],
+    arcIds: ['romance-dawn', 'baratie', 'arlong-park', 'loguetown', 'east-blue-prototype'],
     contexts: ['open-sea'],
     category: 'treasure',
     name: 'Drifting Lockbox',
@@ -125,7 +125,7 @@ export const voyageEventDefinitions: Record<VoyageEventId, VoyageEventDefinition
   },
   'moonlit-cove': {
     id: 'moonlit-cove',
-    arcIds: ['romance-dawn', 'east-blue-prototype'],
+    arcIds: ['romance-dawn', 'baratie', 'arlong-park', 'loguetown', 'east-blue-prototype'],
     contexts: ['open-sea'],
     category: 'rest',
     name: 'Moonlit Cove',
@@ -166,7 +166,7 @@ export const voyageEventDefinitions: Record<VoyageEventId, VoyageEventDefinition
   },
   'foosha-supply-skiff': {
     id: 'foosha-supply-skiff',
-    arcIds: ['romance-dawn', 'east-blue-prototype'],
+    arcIds: ['romance-dawn', 'baratie', 'arlong-park', 'loguetown', 'east-blue-prototype'],
     contexts: ['open-sea'],
     category: 'shop',
     name: 'Foosha Supply Skiff',
@@ -209,7 +209,7 @@ export const voyageEventDefinitions: Record<VoyageEventId, VoyageEventDefinition
   },
   'east-blue-crosscurrent': {
     id: 'east-blue-crosscurrent',
-    arcIds: ['romance-dawn', 'east-blue-prototype'],
+    arcIds: ['romance-dawn', 'baratie', 'arlong-park', 'loguetown', 'east-blue-prototype'],
     contexts: ['open-sea'],
     category: 'hazard',
     name: 'Crosscurrent Maze',
@@ -253,7 +253,7 @@ export const voyageEventDefinitions: Record<VoyageEventId, VoyageEventDefinition
   },
   'news-coo-rumor': {
     id: 'news-coo-rumor',
-    arcIds: ['romance-dawn', 'east-blue-prototype'],
+    arcIds: ['romance-dawn', 'baratie', 'arlong-park', 'loguetown', 'east-blue-prototype'],
     contexts: ['open-sea'],
     category: 'wildcard',
     name: 'A News Coo Knows Too Much',
@@ -294,7 +294,7 @@ export const voyageEventDefinitions: Record<VoyageEventId, VoyageEventDefinition
   },
   'sea-king-shadow': {
     id: 'sea-king-shadow',
-    arcIds: ['romance-dawn', 'east-blue-prototype'],
+    arcIds: ['romance-dawn', 'baratie', 'arlong-park', 'loguetown', 'east-blue-prototype'],
     contexts: ['open-sea'],
     category: 'wildcard',
     name: 'Shadow Beneath the Hull',

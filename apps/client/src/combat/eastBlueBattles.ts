@@ -513,6 +513,64 @@ const voyageBlackCatLookouts = tuneLineup(
   0.75,
 );
 
+function createArmadaPirate(id: string, name: string, slot: number): FighterDefinition {
+  return {
+    id, name, side: 'enemy', slot, maxHp: 58, attack: 15, defense: 8, speed: 12,
+    types: ['brawler'], devilFruitUser: false, battleIq: 30,
+    moves: [
+      damage(`${id}-boarding-axe`, 'Boarding Axe', 'swordsman', 15),
+      allyGuard(`${id}-armor-wall`, 'Armor Wall', 'earth'),
+      stat(`${id}-war-cry`, 'Armada War Cry', 'brawler', 'enemy', 'attack'),
+      multiTarget(`${id}-weapon-volley`, 'Hidden Weapon Volley', 'sniper', 6),
+    ],
+  };
+}
+
+const pearl: FighterDefinition = {
+  id: 'pearl', name: 'Pearl', side: 'enemy', slot: 0, maxHp: 104, attack: 20,
+  defense: 15, speed: 11, types: ['earth', 'fire'], devilFruitUser: false, battleIq: 40,
+  moves: [
+    guardBreakDamage('pearl-punch', 'Pearl Punch', 'brawler', 20, 6, 7),
+    guard('pearl-shield', 'Pearl Shield', 'earth'),
+    selfStat('fire-pearl', 'Fire Pearl', 'fire', 'attack'),
+    groupMove('pearl-firestorm', 'Pearl Firestorm', 'fire', 3, 3, [
+      damageEffect(8), damageOverTimeEffect('burn', 'Burn'),
+    ]),
+  ],
+};
+
+const donKrieg: FighterDefinition = {
+  id: 'don-krieg', name: 'Don Krieg', side: 'enemy', slot: 0, maxHp: 138, attack: 24,
+  defense: 16, speed: 13, types: ['earth', 'sniper'], devilFruitUser: false, battleIq: 65,
+  moves: [
+    guardBreakDamage('battle-spear', 'Exploding Battle Spear', 'fire', 24, 5, 9),
+    guard('warlord-armor', 'Warlord Armor', 'earth'),
+    stat('mh5-gas-bomb', 'MH5 Gas Bomb', 'poison', 'enemy', 'defense'),
+    groupMove('hidden-gun-barrage', 'Hidden Gun Barrage', 'sniper', 4, 3, [damageEffect(10)]),
+  ],
+};
+
+const baratieDeckBrawl = placeEnemies(
+  pearl,
+  createArmadaPirate('krieg-boarder-a', 'Krieg Boarder', 0),
+  createArmadaPirate('krieg-boarder-b', 'Armada Shieldman', 0),
+);
+
+const baratieCannonLine = tuneLineup(placeEnemies(
+  createArmadaPirate('krieg-gunner-a', 'Krieg Gunner', 0),
+  createArmadaPirate('krieg-gunner-b', 'Armada Bombardier', 0),
+), 0.85, 0.85, 0.85);
+
+const kriegOfficers = tuneLineup(placeEnemies(
+  createCrewEnemy('gin', 0, 65), pearl,
+  createArmadaPirate('krieg-officer-guard', 'Krieg Officer Guard', 0),
+), 0.82, 0.82, 0.82);
+
+const kriegLastStand = tuneLineup(placeEnemies(
+  donKrieg, createCrewEnemy('gin', 0, 70), pearl,
+  createArmadaPirate('krieg-last-boarder', 'Armada Veteran', 0),
+), 0.76, 0.76, 0.76);
+
 const buggysBigTop = tuneLineup(
   placeEnemies(
     createCrewEnemy('buggy', 0, 70),
@@ -610,6 +668,90 @@ const arlongPirates: FighterDefinition[] = [
   },
 ];
 
+function createFishmanRaider(id: string, name: string, slot: number): FighterDefinition {
+  return {
+    id, name, side: 'enemy', slot, maxHp: 66, attack: 17, defense: 10, speed: 14,
+    types: ['water', 'brawler'], devilFruitUser: false, battleIq: 35,
+    moves: [
+      damage(`${id}-reef-club`, 'Reef Club', 'brawler', 17),
+      guard(`${id}-fishman-hide`, 'Fish-Man Hide', 'water'),
+      allyStat(`${id}-deep-sea-strength`, 'Deep-Sea Strength', 'water', 'attack'),
+      multiTarget(`${id}-tidal-rush`, 'Tidal Rush', 'water', 7),
+    ],
+  };
+}
+
+function createLoguetownMarine(id: string, name: string, slot: number): FighterDefinition {
+  return {
+    id, name, side: 'enemy', slot, maxHp: 58, attack: 15, defense: 8, speed: 14,
+    types: ['swordsman'], devilFruitUser: false, battleIq: 40,
+    moves: [
+      damage(`${id}-saber`, 'Marine Saber', 'swordsman', 15),
+      allyGuard(`${id}-formation`, 'Cordon Formation', 'earth'),
+      stat(`${id}-warning-shot`, 'Warning Shot', 'sniper', 'enemy', 'speed'),
+      multiTarget(`${id}-rifle-line`, 'Rifle Line', 'sniper', 6),
+    ],
+  };
+}
+
+const captainNezumi: FighterDefinition = {
+  id: 'nezumi', name: 'Captain Nezumi', side: 'enemy', slot: 0, maxHp: 72,
+  attack: 16, defense: 9, speed: 17, types: ['sniper'], devilFruitUser: false, battleIq: 50,
+  moves: [
+    conditionalDamage('nezumi-pistol', 'Confiscation Shot', 'sniper', 17, 'target-negative-effect'),
+    guard('marine-immunity', 'Marine Immunity', 'sniper'),
+    stat('paid-testimony', 'Paid Testimony', 'poison', 'enemy', 'attack'),
+    multiTarget('firing-squad', 'Firing Squad', 'sniper', 7),
+  ],
+};
+
+const arlongCoastPatrol = tuneLineup(placeEnemies(
+  arlongPirates[2],
+  createFishmanRaider('coast-fishman-a', 'Fish-Man Tribute Collector', 0),
+  createFishmanRaider('coast-fishman-b', 'Fish-Man Raider', 0),
+), 0.72, 0.75, 0.75);
+
+const nezumiCoverUp = tuneLineup(placeEnemies(
+  captainNezumi,
+  createLoguetownMarine('nezumi-marine-a', 'Corrupt Marine', 0),
+  createLoguetownMarine('nezumi-marine-b', 'Marine Paymaster', 0),
+), 0.78, 0.78, 0.78);
+
+const arlongFrontGate = tuneLineup(placeEnemies(
+  arlongPirates[1],
+  createFishmanRaider('gate-fishman-a', 'Arlong Gate Guard', 0),
+  createFishmanRaider('gate-fishman-b', 'Fish-Man Enforcer', 0),
+), 0.8, 0.8, 0.8);
+
+const gosaRoad = tuneLineup(placeEnemies(
+  arlongPirates[3],
+  createFishmanRaider('gosa-fishman-a', 'Gosa Sharpshooter', 0),
+  createFishmanRaider('gosa-fishman-b', 'Fish-Man Raider', 0),
+), 0.78, 0.78, 0.78);
+
+const arlongSeaWall = tuneLineup(placeEnemies(
+  arlongPirates[2], createFishmanRaider('sea-wall-fishman', 'Sea Wall Guard', 0),
+), 0.82, 0.82, 0.82);
+
+const arlongParkRaid = tuneLineup(placeEnemies(...arlongPirates), 0.78, 0.78, 0.78);
+
+const loguetownExecutionPlaza = tuneLineup(placeEnemies(
+  createCrewEnemy('buggy', 0, 75), createCrewEnemy('alvida', 0, 55),
+  createCrewEnemy('cabaji', 0, 55),
+), 0.82, 0.82, 0.82);
+
+const loguetownMarineCordon = tuneLineup(placeEnemies(
+  createCrewEnemy('tashigi', 0, 70),
+  createLoguetownMarine('logue-marine-a', 'Loguetown Marine', 0),
+  createLoguetownMarine('logue-marine-b', 'Marine Rifleman', 0),
+), 0.82, 0.82, 0.82);
+
+const smokerPursuit = tuneLineup(placeEnemies(
+  createCrewEnemy('smoker', 0, 85), createCrewEnemy('tashigi', 0, 75),
+  createLoguetownMarine('smoker-guard-a', 'White Hunter Guard', 0),
+  createLoguetownMarine('smoker-guard-b', 'Harbor Rifleman', 0),
+), 0.76, 0.76, 0.76);
+
 const encounterEnemies: Record<EncounterId, FighterDefinition[]> = {
   'alvida-deck': alvidaDeckPirates,
   'alvida-hold': alvidaHoldPirates,
@@ -623,6 +765,19 @@ const encounterEnemies: Record<EncounterId, FighterDefinition[]> = {
   'syrup-north-slope': syrupNorthSlope,
   'syrup-mansion-grounds': syrupMansionGrounds,
   'black-cat-raid': blackCatRaid,
+  'baratie-deck-brawl': baratieDeckBrawl,
+  'baratie-cannon-line': baratieCannonLine,
+  'krieg-officers': kriegOfficers,
+  'krieg-last-stand': kriegLastStand,
+  'arlong-coast-patrol': arlongCoastPatrol,
+  'nezumi-cover-up': nezumiCoverUp,
+  'arlong-front-gate': arlongFrontGate,
+  'gosa-road': gosaRoad,
+  'arlong-sea-wall': arlongSeaWall,
+  'arlong-park-raid': arlongParkRaid,
+  'loguetown-execution-plaza': loguetownExecutionPlaza,
+  'loguetown-marine-cordon': loguetownMarineCordon,
+  'smoker-pursuit': smokerPursuit,
   'voyage-alvida-raiders': voyageAlvidaRaiders,
   'voyage-marine-patrol': voyageMarinePatrol,
   'voyage-buggy-scouts': voyageBuggyScouts,
