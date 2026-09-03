@@ -18,7 +18,9 @@ npm run dev
 The client runs at `http://localhost:5173`. The server health endpoint is available at
 `http://localhost:3001/api/health`.
 
-[Demo Here](https://ryanbchammond.github.io/UltimateOnePieceGame/)
+## Live demo
+
+[Play Ultimate One Piece Adventure on GitHub Pages](https://ryanbchammond.github.io/UltimateOnePieceGame/)
 
 ## Playable campaign
 
@@ -57,13 +59,36 @@ and Landlubber difficulty:
 - Manage battle composition independently from the ten permanent ship-role assignments
 - Track Berries, bounty, hull, PP, checkpoints, outcome receipts, and the captain's journal
 - Resolve event routes, consequences, and battle rewards entirely from authored story data
-- Render only visited nodes and route segments from the active arc on the Phaser map; reachable but
-  unvisited destinations remain selectable through the navigation panel
+- Navigate each active arc on a parchment chart where explored nodes show their resolved state and
+  unexplored nodes remain visible as question marks
+- Select numbered reachable destinations directly on the chart or through the synchronized heading
+  guide, with ship/party markers animating between sea and land locations
 - Automatically persist the current run in browser local storage under a clean development save
 
 The five-card keep-one system, six rarities, shards, star upgrades, role effects, artifacts, and the
 legacy East Blue prototype remain implemented and covered as reusable foundations. The active
 Story Mode campaign now runs from Romance Dawn through Syrup Village.
+
+## Voyage interface
+
+Milestone 11 uses a Slay-the-Spire-inspired route presentation with a nautical manga treatment:
+
+- The compact masthead keeps Berries, bounty, hull, relics, location, and restart state visible.
+- The Phaser chart supports pointer/touch dragging, wheel and button zoom from 60% to 250%, and
+  panning into the water beyond the parchment borders.
+- Reachable nodes receive numbered badges matching the heading guide. Clicking either destination
+  control begins travel; locked unexplored locations remain question marks.
+- A ship marker represents open-sea movement and a party marker represents land movement. Travel
+  and arrival transitions smoothly focus the destination before the next scene.
+- Story outcomes return to the chart with a compact receipt, and the player chooses the next
+  numbered map node to continue.
+- Desktop camera framing keeps the current and reachable locations clear of the lower-right story
+  guide. On smaller layouts the guide stacks below the chart instead.
+- Every combat first opens the battle-party preparation scene. The battlefield is created only
+  after the player confirms the active lineup.
+
+The Milestone 11 build is approved and synchronized on `origin/dev` at `6a9197c`. Full milestone
+playtesting remains pending before any promotion to `main`.
 
 Enemy turns resolve automatically. On a crew turn, click or tap a living enemy on the battlefield,
 or use the synchronized keyboard-accessible target list, then choose one of the acting fighter's
