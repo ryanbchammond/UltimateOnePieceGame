@@ -15,6 +15,7 @@ import {
   shipRoleLabels,
   shipRoleOrder,
 } from '../crew/characters';
+import { getRunCharacterHp, getRunCharacterMaxHp } from '../crew/health';
 import {
   getRoleEffectLevel,
   getRoleEffectSummary,
@@ -26,10 +27,17 @@ import {
   storyNodeChoices,
 } from '../run/storyContent';
 import {
+  getChoiceAdjustedRoles,
   getChoiceBerryCost,
   getChoiceHullDamage,
   getChoiceRequiredRoles,
+  getVoyageRoleEffectLevel,
 } from '../run/storyConsequences';
+import {
+  getCurrentVoyageEvent,
+  getWantedPressure,
+  voyageCategoryLabels,
+} from '../run/voyageEvents';
 import type { ArtifactId, CardPullResult, CharacterId, ShipRole, StoryNode } from '../run/types';
 import { elementLabels } from '../combat/typeEffectiveness';
 import { useBattleStore } from '../store/battleStore';
@@ -44,7 +52,16 @@ function nodeTypeLabel(node: StoryNode): string {
   return 'Story event';
 }
 
-function ArtifactIcon() {
+function ArtifactIcon({ kind }: { kind: ReturnType<typeof getArtifactDefinition>['icon'] }) {
+  if (kind === 'medical-kit') {
+    return <svg aria-hidden="true" viewBox="0 0 48 48"><rect x="8" y="13" width="32" height="27" rx="5" /><path d="M18 13V8h12v5M24 20v13M17.5 26.5h13" /></svg>;
+  }
+  if (kind === 'tiller') {
+    return <svg aria-hidden="true" viewBox="0 0 48 48"><circle cx="24" cy="24" r="10" /><circle cx="24" cy="24" r="3" /><path d="M24 3v11M24 34v11M3 24h11M34 24h11M9 9l8 8M31 31l8 8M39 9l-8 8M17 31l-8 8" /></svg>;
+  }
+  if (kind === 'ledger') {
+    return <svg aria-hidden="true" viewBox="0 0 48 48"><path d="M11 6h25a3 3 0 0 1 3 3v33H14a5 5 0 0 1-5-5V8a2 2 0 0 1 2-2Z" /><path d="M15 6v36M20 15h13M20 22h13M20 29h9" /></svg>;
+  }
   return (
     <svg aria-hidden="true" viewBox="0 0 48 48">
       <circle cx="24" cy="25" r="14" />
@@ -64,7 +81,7 @@ function ArtifactCollection({ artifactIds }: { artifactIds: ArtifactId[] }) {
         return (
           <details className="artifact-item" key={id}>
             <summary aria-label={`${artifact.name}. ${artifact.effect}`}>
-              <ArtifactIcon />
+              <ArtifactIcon kind={artifact.icon} />
             </summary>
             <div className="artifact-tooltip">
               <strong>{artifact.name}</strong>
@@ -169,6 +186,7 @@ function rewardSymbol(label: string): string {
   if (label === 'Bounty') return '★';
   if (label === 'Hull') return '◆';
   if (label === 'Move PP') return '⚡';
+  if (label === 'Crew HP') return '♥';
   if (label === 'Roster' || label === 'Story guest') return '☠';
   if (label === 'Card pack' || label === 'Shard') return '✦';
   if (label === 'Checkpoint') return '⚑';
@@ -179,7 +197,11 @@ export function RewardOutcomeScreen() {
   const receipt = useRunStore((state) => state.latestReward);
   const destinationId = useRunStore((state) => state.rewardDestinationNodeId);
   const acknowledgeReward = useRunStore((state) => state.acknowledgeReward);
+  const pendingVoyage = useRunStore((state) => state.pendingVoyage);
   const destination = getStoryNode(destinationId ?? null);
+  const voyageComplete = Boolean(
+    pendingVoyage && pendingVoyage.currentEventIndex >= pendingVoyage.eventIds.length,
+  );
   if (!receipt) return null;
 
   return (
@@ -206,7 +228,9 @@ export function RewardOutcomeScreen() {
       </div>
       <div className="reward-actions">
         <button className="primary-action" onClick={() => acknowledgeReward(true)} type="button">
-          {destination ? `Continue to ${destination.name}` : 'Continue voyage'}
+          {destination
+            ? `${voyageComplete ? 'Arrive at' : 'Set sail for'} ${destination.name}`
+            : 'Continue voyage'}
         </button>
         {destination && (
           <button className="text-action" onClick={() => acknowledgeReward(false)} type="button">
@@ -220,14 +244,21 @@ export function RewardOutcomeScreen() {
 
 export function VoyagePanel() {
   const run = useRunStore();
-  const enterNode = useRunStore((state) => state.enterNode);
+  const beginVoyage = useRunStore((state) => state.beginVoyage);
   const abandonRun = useRunStore((state) => state.abandonRun);
   const startEncounter = useBattleStore((state) => state.startEncounter);
   const activePartyIds = useRunStore((state) => state.activePartyIds);
   const roleAssignments = useRunStore((state) => state.roleAssignments);
   const characterStars = useRunStore((state) => state.characterStars);
+  const characterHp = useRunStore((state) => state.characterHp ?? {});
   const characterMovePp = useRunStore((state) => state.characterMovePp);
-  const availableNodes = getAvailableNodes(run);
+  const completedVoyageDestination = run.pendingVoyage &&
+    run.pendingVoyage.currentEventIndex >= run.pendingVoyage.eventIds.length
+    ? run.pendingVoyage.destinationNodeId
+    : null;
+  const availableNodes = getAvailableNodes(run).filter(
+    (node) => !completedVoyageDestination || node.id === completedVoyageDestination,
+  );
 
   const sailTo = (node: StoryNode) => {
     if (node.encounterId) {
@@ -237,9 +268,10 @@ export function VoyagePanel() {
         roleAssignments,
         characterStars,
         characterMovePp,
+        characterHp,
       );
     }
-    enterNode(node.id);
+    beginVoyage(node.id);
   };
 
   const restartVoyage = () => {
@@ -273,6 +305,107 @@ export function VoyagePanel() {
           Restart voyage
         </button>
       </div>
+    </section>
+  );
+}
+
+export function VoyageEventPanel() {
+  const run = useRunStore();
+  const resolveVoyageEvent = useRunStore((state) => state.resolveVoyageEvent);
+  const startVoyageBattle = useRunStore((state) => state.startVoyageBattle);
+  const resetBattle = useBattleStore((state) => state.reset);
+  return (
+    <VoyageEventCard
+      onBeginBattle={() => {
+        resetBattle();
+        startVoyageBattle();
+      }}
+      onChoose={resolveVoyageEvent}
+      run={run}
+    />
+  );
+}
+
+export function VoyageEventCard({
+  run,
+  onBeginBattle,
+  onChoose,
+}: {
+  run: ReturnType<typeof useRunStore.getState>;
+  onBeginBattle: () => void;
+  onChoose: (choiceId: string) => void;
+}) {
+  const event = getCurrentVoyageEvent(run);
+  const leg = run.pendingVoyage;
+  const destination = getStoryNode(leg?.destinationNodeId ?? null);
+
+  if (!event || !leg) return null;
+
+  return (
+    <section className={`voyage-event voyage-event-${event.category}`} aria-labelledby="voyage-event-heading">
+      <div className="voyage-event-progress" aria-label="Voyage leg progress">
+        <div>
+          <p className="eyebrow">Logbook draw · {voyageCategoryLabels[event.category]}</p>
+          <span>Heading for {destination?.name ?? 'the next story destination'}</span>
+        </div>
+        <ol>
+          {leg.eventIds.map((eventId, index) => (
+            <li
+              aria-current={index === leg.currentEventIndex ? 'step' : undefined}
+              className={index < leg.currentEventIndex ? 'complete' : index === leg.currentEventIndex ? 'current' : ''}
+              key={`${leg.id}-${eventId}`}
+            >
+              <span>{index < leg.currentEventIndex ? '✓' : index + 1}</span>
+            </li>
+          ))}
+        </ol>
+        <small>Wanted pressure: {getWantedPressure(run.bounty)}</small>
+      </div>
+
+      <div className="voyage-event-copy">
+        <span className={`event-category category-${event.category}`}>
+          {voyageCategoryLabels[event.category]}
+        </span>
+        <h2 id="voyage-event-heading">{event.name}</h2>
+        <h3>{event.subtitle}</h3>
+        <p>{event.description}</p>
+      </div>
+
+      {event.encounterId ? (
+        <button className="primary-action" onClick={onBeginBattle} type="button">
+          Prepare for the attack
+        </button>
+      ) : (
+        <div className="choice-list voyage-choice-list">
+          {(event.choices ?? []).map((choice) => {
+            const berryCost = getChoiceBerryCost(choice);
+            const hullDamage = getChoiceHullDamage(run, choice);
+            const roles = getChoiceAdjustedRoles(choice);
+            const unaffordable = run.berries < berryCost;
+            return (
+              <button
+                disabled={unaffordable}
+                key={choice.id}
+                onClick={() => onChoose(choice.id)}
+                type="button"
+              >
+                <strong>{choice.label}</strong>
+                <small>{choice.detail}</small>
+                {roles.map((role) => {
+                  const level = getVoyageRoleEffectLevel(run, role);
+                  return (
+                    <span className={`role-check ${level}`} key={role}>
+                      {level === 'inactive' ? `No assigned ${shipRoleLabels[role]}` : `${level === 'ideal' ? 'Ideal ' : ''}${shipRoleLabels[role]} contribution`}
+                      {hullDamage === null ? '' : hullDamage === 0 ? ' · no hull damage' : ` · ${hullDamage} hull damage`}
+                    </span>
+                  );
+                })}
+                {unaffordable && <em>Not enough Berries</em>}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
@@ -339,6 +472,7 @@ export function CrewManager({ view }: { view: CrewManagerView }) {
   const roleAssignments = useRunStore((state) => state.roleAssignments);
   const characterShards = useRunStore((state) => state.characterShards);
   const characterStars = useRunStore((state) => state.characterStars);
+  const characterHp = useRunStore((state) => state.characterHp ?? {});
   const canAssignRoles = useRunStore(canManageShipAssignments);
   const assignCrewRole = useRunStore((state) => state.assignCrewRole);
   const addActiveMember = useRunStore((state) => state.addActiveMember);
@@ -352,6 +486,9 @@ export function CrewManager({ view }: { view: CrewManagerView }) {
     const leftActive = activePartyIds.includes(leftId);
     const rightActive = activePartyIds.includes(rightId);
     if (leftActive !== rightActive) return leftActive ? -1 : 1;
+    const leftKo = getRunCharacterHp({ roleAssignments, characterStars, characterHp }, leftId) <= 0;
+    const rightKo = getRunCharacterHp({ roleAssignments, characterStars, characterHp }, rightId) <= 0;
+    if (leftKo !== rightKo) return leftKo ? 1 : -1;
     const left = getCrewCharacter(leftId);
     const right = getCrewCharacter(rightId);
     if (rosterSort === 'rarity') {
@@ -427,6 +564,9 @@ export function CrewManager({ view }: { view: CrewManagerView }) {
               const activeIndex = activePartyIds.indexOf(id);
               const active = activeIndex !== -1;
               const selectedReserve = incomingId === id;
+              const maxHp = getRunCharacterMaxHp({ roleAssignments, characterStars, characterHp }, id);
+              const currentHp = getRunCharacterHp({ roleAssignments, characterStars, characterHp }, id);
+              const knockedOut = currentHp <= 0;
               return (
                 <article
                   className={[
@@ -436,6 +576,7 @@ export function CrewManager({ view }: { view: CrewManagerView }) {
                     guest ? 'is-guest' : '',
                     incomingId && active ? 'is-switch-target' : '',
                     selectedReserve ? 'is-selected-reserve' : '',
+                    knockedOut ? 'is-ko' : '',
                   ].filter(Boolean).join(' ')}
                   key={id}
                 >
@@ -460,6 +601,9 @@ export function CrewManager({ view }: { view: CrewManagerView }) {
                     </span>
                     <small>
                       {stars}★ · {role ? shipRoleLabels[role] : guest ? 'Story guest' : 'Unassigned'} · {shards} shards
+                    </small>
+                    <small className={`roster-health ${knockedOut ? 'ko' : ''}`}>
+                      {knockedOut ? 'KO · Needs recovery' : `${currentHp}/${maxHp} HP`}
                     </small>
                     <span className="inspect-hint">Examine card</span>
                   </button>
@@ -487,13 +631,16 @@ export function CrewManager({ view }: { view: CrewManagerView }) {
                       <button
                         aria-pressed={selectedReserve}
                         className="roster-lineup-action"
+                        disabled={knockedOut}
                         onClick={() => {
                           if (activePartyIds.length < 4) addActiveMember(id);
                           else setIncomingId(selectedReserve ? null : id);
                         }}
                         type="button"
                       >
-                        {activePartyIds.length < 4
+                        {knockedOut
+                          ? 'Needs recovery'
+                          : activePartyIds.length < 4
                           ? 'Add to battle'
                           : selectedReserve
                             ? 'Cancel switch'
@@ -573,6 +720,8 @@ export function CrewManager({ view }: { view: CrewManagerView }) {
           active={activePartyIds.includes(inspectedId)}
           characterId={inspectedId}
           guest={guestIds.includes(inspectedId) && !rosterIds.includes(inspectedId)}
+          currentHp={getRunCharacterHp({ roleAssignments, characterStars, characterHp }, inspectedId)}
+          maxHp={getRunCharacterMaxHp({ roleAssignments, characterStars, characterHp }, inspectedId)}
           onClose={() => setInspectedId(null)}
           role={assignedRole(inspectedId)}
           shards={characterShards[inspectedId] ?? 0}
@@ -590,6 +739,8 @@ interface CharacterDetailDialogProps {
   role?: ShipRole;
   active: boolean;
   guest: boolean;
+  currentHp: number;
+  maxHp: number;
   onClose: () => void;
 }
 
@@ -600,6 +751,8 @@ function CharacterDetailDialog({
   role,
   active,
   guest,
+  currentHp,
+  maxHp,
   onClose,
 }: CharacterDetailDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -656,7 +809,7 @@ function CharacterDetailDialog({
       <section aria-labelledby="character-stats-heading">
         <p className="panel-label" id="character-stats-heading">Current stats</p>
         <dl className="character-stat-grid">
-          <div><dt>HP</dt><dd>{withStars(character.fighter.maxHp)}</dd></div>
+          <div><dt>HP</dt><dd>{currentHp}/{maxHp}</dd></div>
           <div><dt>Attack</dt><dd>{withStars(character.fighter.attack)}</dd></div>
           <div><dt>Defense</dt><dd>{withStars(character.fighter.defense)}</dd></div>
           <div><dt>Speed</dt><dd>{character.fighter.speed}</dd></div>
@@ -860,13 +1013,15 @@ export function BattlePreparation({ onStart }: { onStart: () => void }) {
   const currentNodeId = useRunStore((state) => state.currentNodeId);
   const activePartyIds = useRunStore((state) => state.activePartyIds);
   const node = getStoryNode(currentNodeId);
+  const voyageEvent = useRunStore(getCurrentVoyageEvent);
+  const encounter = voyageEvent ?? node;
 
   return (
     <section className="battle-preparation">
       <div className="battle-preparation-heading">
         <p className="eyebrow">Prepare for battle</p>
-        <h2>{node?.name ?? 'Next encounter'}</h2>
-        <p>{node?.description}</p>
+        <h2>{encounter?.name ?? 'Next encounter'}</h2>
+        <p>{encounter?.description}</p>
         <p><strong>{activePartyIds.length}/4 fighters ready.</strong> Party changes do not alter ship assignments.</p>
         <button className="primary-action" onClick={onStart} type="button">
           Begin encounter

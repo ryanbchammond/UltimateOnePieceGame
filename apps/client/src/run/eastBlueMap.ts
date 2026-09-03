@@ -250,6 +250,7 @@ export const eastBluePrototypeChoices: Record<string, NodeChoice[]> = {
       consequences: [
         { type: 'restore', target: 'hull' },
         { type: 'restore', target: 'move-pp' },
+        { type: 'heal', target: 'crew', percent: 50 },
         { type: 'checkpoint' },
       ],
       outcome: {

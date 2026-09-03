@@ -363,6 +363,22 @@ describe('Story run store', () => {
     expect(migrated.rewardDestinationNodeId).toBeNull();
   });
 
+  it('adds empty voyage state to pre-Milestone-9 saves', () => {
+    useRunStore.getState().startRun();
+    const {
+      pendingVoyage: _pendingVoyage,
+      voyageEventHistory: _history,
+      characterHp: _characterHp,
+      ...versionThree
+    } =
+      useRunStore.getState();
+    const migrated = migrateRunState(versionThree, 3);
+
+    expect(migrated.pendingVoyage).toBeNull();
+    expect(migrated.voyageEventHistory).toEqual([]);
+    expect(migrated.characterHp).toEqual({});
+  });
+
   it('allows unrestricted one-to-four fighter parties from permanent and guest characters', () => {
     useRunStore.getState().startRun();
     useRunStore.setState({ guestIds: ['coby'] });
@@ -730,7 +746,7 @@ describe('Story run store', () => {
     expect(getAvailableNodes(run).map((node) => node.id)).toEqual(['acrobat-rooftops']);
   });
 
-  it('acknowledges a persisted outcome and continues directly to its sole destination', () => {
+  it('acknowledges a story outcome and begins a persisted voyage to its sole destination', () => {
     useRunStore.getState().startRun();
     expect(useRunStore.getState().resolveNode('pack-provisions')).toBe(true);
     expect(useRunStore.getState()).toEqual(expect.objectContaining({
@@ -741,11 +757,18 @@ describe('Story run store', () => {
 
     useRunStore.getState().acknowledgeReward();
     expect(useRunStore.getState()).toEqual(expect.objectContaining({
-      phase: 'node',
-      currentNodeId: 'barrel-at-sea',
+      phase: 'voyage',
+      currentNodeId: 'foosha-departure',
       rewardPending: false,
       rewardDestinationNodeId: null,
+      pendingVoyage: expect.objectContaining({
+        fromNodeId: 'foosha-departure',
+        destinationNodeId: 'barrel-at-sea',
+        currentEventIndex: 0,
+      }),
     }));
+    expect(useRunStore.getState().pendingVoyage?.eventIds.length).toBeGreaterThanOrEqual(1);
+    expect(useRunStore.getState().pendingVoyage?.eventIds.length).toBeLessThanOrEqual(3);
   });
 
   it('completes Buggy, permanently recruits Nami, and closes the campaign after the Orange Town pack', () => {

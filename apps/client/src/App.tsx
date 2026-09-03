@@ -10,6 +10,7 @@ import {
   RunSetup,
   RunStatus,
   VictoryPanel,
+  VoyageEventPanel,
   VoyagePanel,
 } from './components/RunPanels';
 import { PhaserCanvas } from './game/PhaserCanvas';
@@ -17,6 +18,7 @@ import { activePartyHasCapability, shouldRevealBattleIq } from './crew/capabilit
 import { isBattleEncounterLoaded } from './run/battleFlow';
 import { shouldShowVoyageNavigation } from './run/navigation';
 import { getStoryNode } from './run/storyContent';
+import { getCurrentVoyageEvent } from './run/voyageEvents';
 import { useBattleStore } from './store/battleStore';
 import { useGameSession } from './store/gameSession';
 import { canManageShipAssignments, useRunStore } from './store/runStore';
@@ -31,6 +33,7 @@ export function App() {
   const roleAssignments = useRunStore((state) => state.roleAssignments);
   const characterStars = useRunStore((state) => state.characterStars);
   const characterMovePp = useRunStore((state) => state.characterMovePp);
+  const characterHp = useRunStore((state) => state.characterHp ?? {});
   const pendingPack = useRunStore((state) => state.pendingPack);
   const rewardPending = useRunStore((state) => state.rewardPending ?? false);
   const resolveBattle = useRunStore((state) => state.resolveBattle);
@@ -42,10 +45,12 @@ export function App() {
   const abandonRun = useRunStore((state) => state.abandonRun);
   const [voyageScreen, setVoyageScreen] = useState<VoyageScreen>('map');
   const currentNode = getStoryNode(currentNodeId);
+  const voyageEvent = useRunStore(getCurrentVoyageEvent);
+  const currentEncounterId = voyageEvent?.encounterId ?? currentNode?.encounterId;
   const canAssignRoles = useRunStore(canManageShipAssignments);
   const encounterLoaded = isBattleEncounterLoaded({
     runPhase,
-    currentEncounterId: currentNode?.encounterId,
+    currentEncounterId,
     loadedEncounterId: encounterId,
     activePartyIds,
     loadedPartyIds: battlePartyIds,
@@ -59,13 +64,14 @@ export function App() {
   const showVoyageNavigation = shouldShowVoyageNavigation(runPhase, encounterLoaded);
 
   const beginEncounter = () => {
-    if (!currentNode?.encounterId) return;
+    if (!currentEncounterId) return;
     startEncounter(
-      currentNode.encounterId,
+      currentEncounterId,
       activePartyIds,
       roleAssignments,
       characterStars,
       characterMovePp,
+      characterHp,
     );
   };
 
@@ -152,6 +158,8 @@ export function App() {
             <RewardOutcomeScreen />
           ) : pendingPack ? (
             <PackOpeningScreen />
+          ) : runPhase === 'voyage' ? (
+            <VoyageEventPanel />
           ) : runPhase === 'node' ? (
             <>
               <NodePanel />

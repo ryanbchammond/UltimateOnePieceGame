@@ -25,6 +25,7 @@ import type {
   CardRarity,
   CharacterCapability,
   CharacterId,
+  CharacterHp,
   CharacterMovePp,
   RoleAssignments,
   ShipRole,
@@ -661,6 +662,7 @@ export function getPlayerFighters(
   maxHpBonusPercent = 0,
   characterStars: Partial<Record<CharacterId, number>> = {},
   characterMovePp: CharacterMovePp = {},
+  characterHp: CharacterHp = {},
 ): FighterDefinition[] {
   if (ids.length < 1 || ids.length > 4 || new Set(ids).size !== ids.length) {
     throw new Error('A story battle party must contain between one and four unique crew members.');
@@ -670,10 +672,7 @@ export function getPlayerFighters(
     const character = getCrewCharacter(id);
     const starLevel = Math.max(1, characterStars[id] ?? 1);
     const starBonusPercent = (starLevel - 1) * 5;
-    const starredMaxHp = character.fighter.maxHp + Math.round(
-      (character.fighter.maxHp * starBonusPercent) / 100,
-    );
-    const maxHp = starredMaxHp + Math.round((starredMaxHp * maxHpBonusPercent) / 100);
+    const maxHp = getCharacterMaxHp(id, maxHpBonusPercent, characterStars);
     const attack = character.fighter.attack + Math.round(
       (character.fighter.attack * starBonusPercent) / 100,
     );
@@ -689,6 +688,20 @@ export function getPlayerFighters(
       slot,
       moves: character.fighter.moves.map((move) => ({ ...move })),
       initialMovePp: characterMovePp[id] ? { ...characterMovePp[id] } : undefined,
+      initialHp: characterHp[id],
     };
   });
+}
+
+export function getCharacterMaxHp(
+  id: CharacterId,
+  maxHpBonusPercent = 0,
+  characterStars: Partial<Record<CharacterId, number>> = {},
+): number {
+  const character = getCrewCharacter(id);
+  const starBonusPercent = (Math.max(1, characterStars[id] ?? 1) - 1) * 5;
+  const starredMaxHp = character.fighter.maxHp + Math.round(
+    (character.fighter.maxHp * starBonusPercent) / 100,
+  );
+  return starredMaxHp + Math.round((starredMaxHp * maxHpBonusPercent) / 100);
 }

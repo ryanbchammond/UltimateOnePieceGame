@@ -4,6 +4,7 @@ import { shouldShowVoyageNavigation } from './navigation';
 describe('voyage navigation visibility', () => {
   it('shows navigation throughout active non-combat screens', () => {
     expect(shouldShowVoyageNavigation('map', false)).toBe(true);
+    expect(shouldShowVoyageNavigation('voyage', false)).toBe(true);
     expect(shouldShowVoyageNavigation('node', false)).toBe(true);
     expect(shouldShowVoyageNavigation('battle', false)).toBe(true);
     expect(shouldShowVoyageNavigation('victory', false)).toBe(true);

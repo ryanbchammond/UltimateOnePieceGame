@@ -206,6 +206,7 @@ export const romanceDawnNodes: StoryNode[] = [
     description:
       'Zoro accepts Luffy\'s bargain: if Luffy returns his swords and they survive Morgan\'s attack, the Pirate Hunter will join his crew.',
     type: 'recruit',
+    services: ['crew-assignments'],
     x: 775,
     y: 270,
     prerequisites: ['marine-yard', 'execution-grounds'],
@@ -241,6 +242,7 @@ export const romanceDawnNodes: StoryNode[] = [
     description:
       'Coby remains in Shells Town to pursue his Marine dream. Zoro takes his place beside Luffy as the first permanent crewmate of the voyage.',
     type: 'event',
+    services: ['crew-assignments'],
     x: 875,
     y: 400,
     prerequisites: ['morgan-last-stand'],

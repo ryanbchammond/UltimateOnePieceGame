@@ -12,7 +12,7 @@ import {
   resolveAction,
 } from '../combat/engine';
 import type { BattleState } from '../combat/types';
-import type { CharacterId, CharacterMovePp, EncounterId, RoleAssignments } from '../run/types';
+import type { CharacterHp, CharacterId, CharacterMovePp, EncounterId, RoleAssignments } from '../run/types';
 import { useRunStore } from './runStore';
 
 interface BattleStoreState {
@@ -22,6 +22,7 @@ interface BattleStoreState {
   roleAssignments: RoleAssignments;
   characterStars: Partial<Record<CharacterId, number>>;
   characterMovePp: CharacterMovePp;
+  characterHp: CharacterHp;
   selectedTargetId: string;
   selectTarget: (fighterId: string) => void;
   useMove: (moveId: string) => void;
@@ -32,6 +33,7 @@ interface BattleStoreState {
     roleAssignments?: RoleAssignments,
     characterStars?: Partial<Record<CharacterId, number>>,
     characterMovePp?: CharacterMovePp,
+    characterHp?: CharacterHp,
   ) => void;
   restart: () => void;
   reset: () => void;
@@ -50,6 +52,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
   roleAssignments: createStartingRoleAssignments(),
   characterStars: {},
   characterMovePp: {},
+  characterHp: {},
   selectedTargetId: firstLivingEnemy(initialBattle),
 
   selectTarget: (fighterId) => {
@@ -61,7 +64,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
   },
 
   useMove: (moveId) => {
-    const { battle, selectedTargetId, encounterId, characterMovePp } = get();
+    const { battle, selectedTargetId, encounterId, characterMovePp, characterHp } = get();
     const actor = getCurrentFighter(battle);
     if (!actor || actor.side !== 'player') return;
 
@@ -99,10 +102,17 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
         getRemainingPp(updatedActor, authoredMove),
       );
     }
+    const nextCharacterHp = encounterId
+      ? Object.fromEntries(nextBattle.fighters
+          .filter((fighter) => fighter.side === 'player')
+          .map((fighter) => [fighter.id, fighter.hp])) as CharacterHp
+      : characterHp;
+    if (encounterId) useRunStore.getState().setCharacterHealth(nextCharacterHp);
 
     set({
       battle: nextBattle,
       characterMovePp: nextCharacterMovePp,
+      characterHp: { ...characterHp, ...nextCharacterHp },
       selectedTargetId: nextBattle.fighters.find(
         (fighter) => fighter.id === selectedTargetId && fighter.hp > 0,
       )
@@ -112,12 +122,19 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
   },
 
   takeEnemyTurn: () => {
-    const { battle, selectedTargetId } = get();
+    const { battle, selectedTargetId, encounterId, characterHp } = get();
     const actor = getCurrentFighter(battle);
     if (!actor || actor.side !== 'enemy') return;
     const nextBattle = resolveAction(battle, chooseEnemyAction(battle));
+    const nextCharacterHp = encounterId
+      ? Object.fromEntries(nextBattle.fighters
+          .filter((fighter) => fighter.side === 'player')
+          .map((fighter) => [fighter.id, fighter.hp])) as CharacterHp
+      : characterHp;
+    if (encounterId) useRunStore.getState().setCharacterHealth(nextCharacterHp);
     set({
       battle: nextBattle,
+      characterHp: { ...characterHp, ...nextCharacterHp },
       selectedTargetId: nextBattle.fighters.find(
         (fighter) => fighter.id === selectedTargetId && fighter.hp > 0,
       )
@@ -132,6 +149,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
     roleAssignments = createStartingRoleAssignments(),
     characterStars = {},
     characterMovePp = {},
+    characterHp = {},
   ) => {
     const battle = createBattle(
       getEncounterFighters(
@@ -140,6 +158,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
         roleAssignments,
         characterStars,
         characterMovePp,
+        characterHp,
       ),
     );
     set({
@@ -149,12 +168,13 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
       roleAssignments: { ...roleAssignments },
       characterStars: { ...characterStars },
       characterMovePp: { ...characterMovePp },
+      characterHp: { ...characterHp },
       selectedTargetId: firstLivingEnemy(battle),
     });
   },
 
   restart: () => {
-    const { encounterId, activePartyIds, roleAssignments, characterStars, characterMovePp } = get();
+    const { encounterId, activePartyIds, roleAssignments, characterStars, characterMovePp, characterHp } = get();
     const battle = encounterId
       ? createBattle(
           getEncounterFighters(
@@ -163,6 +183,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
             roleAssignments,
             characterStars,
             characterMovePp,
+            characterHp,
           ),
         )
       : createDemoBattle();
@@ -178,6 +199,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
       roleAssignments: createStartingRoleAssignments(),
       characterStars: {},
       characterMovePp: {},
+      characterHp: {},
       selectedTargetId: firstLivingEnemy(battle),
     });
   },

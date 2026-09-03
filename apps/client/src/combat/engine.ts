@@ -275,7 +275,7 @@ export function createBattle(definitions: FighterDefinition[]): BattleState {
       ...candidate,
       effects: candidate.effects.map((effect) => ({ ...effect })),
     })),
-    hp: fighter.maxHp,
+    hp: Math.max(0, Math.min(fighter.maxHp, fighter.initialHp ?? fighter.maxHp)),
     activeEffects: [],
     movePp: Object.fromEntries(
       fighter.moves.map((candidate) => [

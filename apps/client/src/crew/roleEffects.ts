@@ -17,6 +17,14 @@ export const functionalRoleEffects: Partial<Record<ShipRole, RoleEffectDescripti
     standard: 'Unlocks navigation checks; risky routes cost 5 hull',
     ideal: 'Unlocks navigation checks and avoids route damage',
   },
+  doctor: {
+    standard: 'Improves recovery and rescue outcomes during voyage events',
+    ideal: 'Provides the best recovery and rescue event outcome',
+  },
+  helmsman: {
+    standard: 'Reduces hull damage while steering through voyage hazards',
+    ideal: 'Avoids hull damage from steerable voyage hazards',
+  },
   cook: {
     standard: '+5% max HP for the active battle party',
     ideal: '+10% max HP for the active battle party',

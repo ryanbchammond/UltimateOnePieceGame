@@ -16,7 +16,52 @@ import {
   orangeTownConnections,
   orangeTownNodes,
 } from './orangeTownMap';
-import type { NodeService, RunSnapshot, StoryArc, StoryContent, StoryNode } from './types';
+import type {
+  NodeService,
+  RunSnapshot,
+  StoryArc,
+  StoryContent,
+  StoryNode,
+  StoryTravelRule,
+  VoyageContext,
+} from './types';
+
+export function storyConnectionKey(fromNodeId: string, toNodeId: string): string {
+  return `${fromNodeId}->${toNodeId}`;
+}
+
+const travelRuleEntries: Array<[[string, string], VoyageContext, number, number]> = [
+  [['foosha-departure', 'barrel-at-sea'], 'open-sea', 1, 3],
+  [['barrel-at-sea', 'alvida-deck'], 'alvida-ship', 0, 2],
+  [['barrel-at-sea', 'alvida-hold'], 'alvida-ship', 0, 2],
+  [['alvida-hold', 'alvida-hold-battle'], 'immediate', 0, 0],
+  [['alvida-deck', 'cobys-resolve'], 'immediate', 0, 0],
+  [['alvida-hold-battle', 'cobys-resolve'], 'immediate', 0, 0],
+  [['cobys-resolve', 'shells-town-arrival'], 'open-sea', 1, 3],
+  [['shells-town-arrival', 'marine-yard'], 'shells-town', 0, 2],
+  [['shells-town-arrival', 'execution-grounds'], 'shells-town', 0, 2],
+  [['marine-yard', 'free-pirate-hunter'], 'immediate', 0, 0],
+  [['execution-grounds', 'free-pirate-hunter'], 'immediate', 0, 0],
+  [['free-pirate-hunter', 'morgan-last-stand'], 'immediate', 0, 0],
+  [['morgan-last-stand', 'marines-farewell'], 'immediate', 0, 0],
+  [['marines-farewell', 'orange-town-harbor'], 'open-sea', 1, 3],
+  [['orange-town-harbor', 'chouchous-stand'], 'orange-town', 0, 2],
+  [['chouchous-stand', 'beast-tamers-street'], 'immediate', 0, 0],
+  [['chouchous-stand', 'harbor-decoy'], 'immediate', 0, 0],
+  [['chouchous-stand', 'acrobat-rooftops'], 'immediate', 0, 0],
+  [['beast-tamers-street', 'mayors-resolve'], 'orange-town', 0, 2],
+  [['harbor-decoy', 'mayors-resolve'], 'orange-town', 0, 2],
+  [['acrobat-rooftops', 'mayors-resolve'], 'orange-town', 0, 2],
+  [['mayors-resolve', 'buggys-big-top'], 'immediate', 0, 0],
+  [['buggys-big-top', 'maps-and-promises'], 'immediate', 0, 0],
+];
+
+const travelRules: Record<string, StoryTravelRule> = Object.fromEntries(
+  travelRuleEntries.map(([connection, context, minEvents, maxEvents]) => [
+    storyConnectionKey(connection[0], connection[1]),
+    { context, minEvents, maxEvents },
+  ]),
+);
 
 // The approved alpha remains active while Romance Dawn and Orange Town are authored. Keeping the
 // legacy content behind this boundary lets the UI and stores stop depending on a specific saga.
@@ -29,12 +74,28 @@ export const activeStoryContent: StoryContent = {
     ...orangeTownConnections,
     ...eastBluePrototypeConnections,
   ],
+  travelRules,
   choices: { ...romanceDawnChoices, ...orangeTownChoices, ...eastBluePrototypeChoices },
 };
 
 export const storyNodes = activeStoryContent.nodes;
 export const storyConnections = activeStoryContent.connections;
 export const storyNodeChoices = activeStoryContent.choices;
+
+export function getStoryTravelRule(
+  fromNodeId: string | null,
+  toNodeId: string,
+  content: StoryContent = activeStoryContent,
+): StoryTravelRule {
+  if (!fromNodeId || fromNodeId === toNodeId) {
+    return { context: 'immediate', minEvents: 0, maxEvents: 0 };
+  }
+  return content.travelRules?.[storyConnectionKey(fromNodeId, toNodeId)] ?? {
+    context: 'open-sea',
+    minEvents: 1,
+    maxEvents: 3,
+  };
+}
 
 export function getStoryNode(
   nodeId: string | null,

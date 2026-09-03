@@ -128,6 +128,7 @@ export interface FighterDefinition {
   devilFruitUser: boolean;
   battleIq?: number;
   moves: Move[];
+  initialHp?: number;
   initialMovePp?: Record<string, number>;
 }
 

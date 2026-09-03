@@ -49,6 +49,7 @@ export const orangeTownNodes: StoryNode[] = [
     description:
       'Luffy and Zoro reach a harbor scarred by cannon fire. Nami, a thief targeting pirates, offers a temporary alliance against Buggy and a path into the occupied town.',
     type: 'start',
+    services: ['crew-assignments'],
     x: 90,
     y: 270,
     prerequisites: [],
@@ -143,6 +144,7 @@ export const orangeTownNodes: StoryNode[] = [
     description:
       'Mayor Boodle refuses to surrender his town. His refuge gives the crew time to recover before deciding how to help Orange Town prepare for the final confrontation.',
     type: 'rest',
+    services: ['crew-assignments'],
     x: 605,
     y: 270,
     prerequisites: ['beast-tamers-street', 'harbor-decoy', 'acrobat-rooftops'],
@@ -198,6 +200,7 @@ export const orangeTownConnections: Array<[string, string]> = [
 
 const mayorRecovery = [
   { type: 'restore', target: 'move-pp' } as const,
+  { type: 'heal', target: 'crew', percent: 50 } as const,
   { type: 'checkpoint' } as const,
 ];
 

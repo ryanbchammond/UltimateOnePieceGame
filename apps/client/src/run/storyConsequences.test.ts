@@ -5,6 +5,7 @@ import {
   applyStoryConsequences,
   canResolveStoryChoice,
   getChoiceHullDamage,
+  getVoyageRoleEffectLevel,
 } from './storyConsequences';
 
 const fixtureNode: StoryNode = {
@@ -143,5 +144,61 @@ describe('authored story consequences', () => {
       },
     }));
     expect(result.snapshot.pendingPack?.cards).toHaveLength(5);
+  });
+
+  it('uses assigned, ideal, and artifact-improved role tiers without hiding a fallback', () => {
+    const choice: NodeChoice = {
+      id: 'steer-hazard',
+      label: 'Steer through',
+      detail: 'Role-adjusted hazard.',
+      consequences: [{
+        type: 'hull-damage',
+        amount: 9,
+        roleAdjustedAmount: { role: 'helmsman', standard: 4, ideal: 0 },
+      }],
+      outcome: { title: 'Clear', detail: 'Clear', journalEntry: 'Clear' },
+    };
+    const fallback = fixtureRun();
+    expect(canResolveStoryChoice(fallback, choice)).toBe(true);
+    expect(getChoiceHullDamage(fallback, choice)).toBe(9);
+
+    const standard = fixtureRun({
+      roleAssignments: { ...fallback.roleAssignments, captain: null, helmsman: 'luffy' },
+    });
+    expect(getVoyageRoleEffectLevel(standard, 'helmsman')).toBe('standard');
+    expect(getChoiceHullDamage(standard, choice)).toBe(4);
+
+    const improved = fixtureRun({
+      ...standard,
+      artifacts: ['reinforced-tiller'],
+    });
+    expect(getVoyageRoleEffectLevel(improved, 'helmsman')).toBe('ideal');
+    expect(getChoiceHullDamage(improved, choice)).toBe(0);
+  });
+
+  it('applies treasure bonuses and converts duplicate artifacts into Berries', () => {
+    const choice: NodeChoice = {
+      id: 'treasure-with-duplicate',
+      label: 'Take treasure',
+      detail: 'Treasure fixture.',
+      consequences: [
+        { type: 'resource', resource: 'berries', amount: 40, treasureReward: true },
+        { type: 'artifact', artifactId: 'merchants-ledger' },
+      ],
+      outcome: { title: 'Treasure', detail: 'Treasure', journalEntry: 'Treasure' },
+    };
+    const result = applyStoryConsequences(
+      fixtureRun({ artifacts: ['merchants-ledger'] }),
+      fixtureNode,
+      choice,
+    );
+
+    expect(result.snapshot.berries).toBe(215);
+    expect(result.snapshot.artifacts).toEqual(['merchants-ledger']);
+    expect(result.changes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: 'Berries', value: '+65' }),
+      expect.objectContaining({ label: 'Artifact', value: "Merchant's Ledger duplicate" }),
+      expect.objectContaining({ label: 'Berries', value: '+50' }),
+    ]));
   });
 });

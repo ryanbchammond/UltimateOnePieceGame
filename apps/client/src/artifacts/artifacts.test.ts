@@ -2,12 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { getArtifactDefinition, migrateArtifactIds } from './artifacts';
 
 describe('artifacts', () => {
-  it('authors an explicitly inactive Weathered Log Pose', () => {
+  it('authors four active, typed voyage artifacts', () => {
     expect(getArtifactDefinition('weathered-log-pose')).toEqual(expect.objectContaining({
       name: 'Weathered Log Pose',
-      active: false,
-      effect: 'No active effect in this development build.',
+      active: true,
+      improvesRole: 'navigator',
       icon: 'log-pose',
+    }));
+    expect(getArtifactDefinition('field-medical-kit').improvesRole).toBe('doctor');
+    expect(getArtifactDefinition('reinforced-tiller').improvesRole).toBe('helmsman');
+    expect(getArtifactDefinition('merchants-ledger')).toEqual(expect.objectContaining({
+      active: true,
+      duplicateBerries: 50,
+      icon: 'ledger',
     }));
   });
 
@@ -15,9 +22,10 @@ describe('artifacts', () => {
     expect(migrateArtifactIds([
       'Weathered Log Pose',
       'weathered-log-pose',
+      'Field Medical Kit',
       'Unknown Artifact',
       null,
-    ])).toEqual(['weathered-log-pose']);
+    ])).toEqual(['weathered-log-pose', 'field-medical-kit']);
     expect(migrateArtifactIds(null)).toEqual([]);
   });
 });

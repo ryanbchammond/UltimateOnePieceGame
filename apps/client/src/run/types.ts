@@ -1,6 +1,6 @@
 export type GameMode = 'story';
 export type Difficulty = 'landlubber';
-export type RunPhase = 'setup' | 'map' | 'node' | 'battle' | 'victory';
+export type RunPhase = 'setup' | 'map' | 'voyage' | 'node' | 'battle' | 'victory';
 export type CardRarity =
   | 'common'
   | 'uncommon'
@@ -29,7 +29,11 @@ export type EncounterId =
   | 'beast-tamers-street'
   | 'harbor-decoy'
   | 'acrobat-rooftops'
-  | 'buggys-big-top';
+  | 'buggys-big-top'
+  | 'voyage-alvida-raiders'
+  | 'voyage-marine-patrol'
+  | 'voyage-buggy-scouts'
+  | 'voyage-marine-pursuit';
 export type CharacterId =
   | 'luffy'
   | 'alvida'
@@ -50,7 +54,11 @@ export type CharacterId =
   | 'cabaji'
   | 'smoker';
 export type CharacterCapability = 'observation-haki';
-export type ArtifactId = 'weathered-log-pose';
+export type ArtifactId =
+  | 'weathered-log-pose'
+  | 'field-medical-kit'
+  | 'reinforced-tiller'
+  | 'merchants-ledger';
 export type ShipRole =
   | 'captain'
   | 'fighter-1'
@@ -65,6 +73,7 @@ export type ShipRole =
 
 export type RoleAssignments = Record<ShipRole, CharacterId | null>;
 export type CharacterMovePp = Partial<Record<CharacterId, Record<string, number>>>;
+export type CharacterHp = Partial<Record<CharacterId, number>>;
 export type CardPackId = 'baratie-east-blue' | 'romance-dawn' | 'orange-town';
 
 export interface RewardChange {
@@ -122,6 +131,7 @@ export interface StoryContent {
   arcs: StoryArc[];
   nodes: StoryNode[];
   connections: Array<[string, string]>;
+  travelRules?: Record<string, StoryTravelRule>;
   choices: Record<string, NodeChoice[]>;
 }
 
@@ -170,12 +180,68 @@ export interface RunSnapshot {
   characterShards: Partial<Record<CharacterId, number>>;
   characterStars: Partial<Record<CharacterId, number>>;
   characterMovePp: CharacterMovePp;
+  characterHp?: CharacterHp;
   packsOpened: number;
   pendingPack: CardPackOpening | null;
   crewAssignmentWindow: 'card-pull' | null;
   latestReward: RewardReceipt | null;
   rewardPending?: boolean;
   rewardDestinationNodeId?: string | null;
+  rewardOriginNodeId?: string | null;
+  pendingVoyage?: VoyageLeg | null;
+  voyageEventHistory?: VoyageEventId[];
+}
+
+export type VoyageEventCategory =
+  | 'battle'
+  | 'treasure'
+  | 'rest'
+  | 'shop'
+  | 'hazard'
+  | 'wildcard';
+
+export type VoyageEventId =
+  | 'alvida-stragglers'
+  | 'marine-longboat'
+  | 'drifting-lockbox'
+  | 'moonlit-cove'
+  | 'foosha-supply-skiff'
+  | 'east-blue-crosscurrent'
+  | 'news-coo-rumor'
+  | 'sea-king-shadow'
+  | 'alvida-deck-patrol'
+  | 'alvida-stolen-rations'
+  | 'alvida-locked-cabin'
+  | 'alvida-loose-powder'
+  | 'shells-town-patrol'
+  | 'rika-rations'
+  | 'shells-town-storehouse'
+  | 'shells-town-doctor'
+  | 'buggy-scout-raft'
+  | 'marine-pursuit-cutter'
+  | 'abandoned-circus-cache'
+  | 'orange-town-cellar'
+  | 'floating-peddler'
+  | 'cannon-smoke-bank'
+  | 'castaway-doctor'
+  | 'unmarked-den-den-mushi'
+  | 'wrecked-circus-barge'
+  | 'sheltered-fishing-islet';
+
+export interface VoyageLeg {
+  id: string;
+  fromNodeId: string;
+  destinationNodeId: string;
+  eventIds: VoyageEventId[];
+  currentEventIndex: number;
+}
+
+export type VoyageContext = 'open-sea' | 'alvida-ship' | 'shells-town' | 'orange-town' | 'immediate';
+
+export interface StoryTravelRule {
+  context: VoyageContext;
+  minEvents: number;
+  maxEvents: number;
 }
 
 export interface NodeChoice {
@@ -208,6 +274,8 @@ export type StoryConsequence =
       resource: 'berries' | 'bounty';
       amount: number;
       captainBountyBonus?: boolean;
+      treasureReward?: boolean;
+      roleAdjustedAmount?: RoleAdjustedAmount;
     }
   | {
       type: 'hull-damage';
@@ -215,12 +283,14 @@ export type StoryConsequence =
       protectedByShipwright?: boolean;
       idealRole?: ShipRole;
       idealRoleAmount?: number;
+      roleAdjustedAmount?: RoleAdjustedAmount;
     }
   | { type: 'artifact'; artifactId: ArtifactId }
   | { type: 'recruit'; characterId: CharacterId; preferredRoles?: ShipRole[] }
   | { type: 'guest'; action: 'add' | 'remove'; characterId: CharacterId }
   | { type: 'restore'; target: 'hull' | 'move-pp' }
-  | { type: 'hull-repair'; amount: number }
+  | { type: 'heal'; target: 'active-party' | 'crew'; percent: number }
+  | { type: 'hull-repair'; amount: number; roleAdjustedAmount?: RoleAdjustedAmount }
   | { type: 'checkpoint' }
   | { type: 'route'; branch: string; nodeId: string }
   | {
@@ -232,3 +302,9 @@ export type StoryConsequence =
         currentNodeId: string;
       };
     };
+
+export interface RoleAdjustedAmount {
+  role: ShipRole;
+  standard: number;
+  ideal: number;
+}

@@ -23,7 +23,7 @@ import {
 } from './moves';
 import { getCrewCharacter, getPlayerFighters, startingActivePartyIds } from '../crew/characters';
 import { getCookMaxHpBonusPercent } from '../crew/roleEffects';
-import type { CharacterId, CharacterMovePp, EncounterId, RoleAssignments } from '../run/types';
+import type { CharacterHp, CharacterId, CharacterMovePp, EncounterId, RoleAssignments } from '../run/types';
 
 const damage = (id: string, name: string, element: Element, power: number): Move =>
   directDamage(id, name, element, power);
@@ -325,6 +325,23 @@ const executionGroundsPatrol = placeEnemies(
   marineRecruit,
 );
 
+const voyageAlvidaRaiders = tuneLineup(
+  placeEnemies(
+    createAlvidaPirate('voyage-raider-a', 'Alvida Raider', 0, 10),
+    createAlvidaPirate('voyage-raider-b', 'Alvida Lookout', 0, 9),
+  ),
+  0.65,
+  0.75,
+  0.75,
+);
+
+const voyageMarinePatrol = tuneLineup(
+  placeEnemies(marineRecruit, marineGuard),
+  0.6,
+  0.7,
+  0.7,
+);
+
 const morganLastStand = tuneLineup(
   placeEnemies(
     createCrewEnemy('morgan', 0, 70),
@@ -355,6 +372,23 @@ const acrobatRooftops = placeEnemies(
   createCrewEnemy('cabaji', 0, 55),
   createOrangePirate('acrobat-pirate-a', 'Acrobat Pirate', 0, 'acrobat'),
   createOrangePirate('acrobat-pirate-b', 'Knife-Juggling Pirate', 0, 'acrobat'),
+);
+
+const voyageBuggyScouts = tuneLineup(
+  placeEnemies(
+    createOrangePirate('voyage-acrobat', 'Buggy Scout', 0, 'acrobat'),
+    createOrangePirate('voyage-beast-pirate', 'Beast Pirate', 0, 'beast'),
+  ),
+  0.7,
+  0.75,
+  0.75,
+);
+
+const voyageMarinePursuit = tuneLineup(
+  placeEnemies(marineGunner, marineRecruit),
+  0.65,
+  0.75,
+  0.75,
 );
 
 const buggysBigTop = tuneLineup(
@@ -464,6 +498,10 @@ const encounterEnemies: Record<EncounterId, FighterDefinition[]> = {
   'harbor-decoy': harborDecoy,
   'acrobat-rooftops': acrobatRooftops,
   'buggys-big-top': buggysBigTop,
+  'voyage-alvida-raiders': voyageAlvidaRaiders,
+  'voyage-marine-patrol': voyageMarinePatrol,
+  'voyage-buggy-scouts': voyageBuggyScouts,
+  'voyage-marine-pursuit': voyageMarinePursuit,
   'shells-town': shellsTownMarines,
   'arlong-park': arlongPirates,
 };
@@ -474,10 +512,11 @@ export function getEncounterFighters(
   roleAssignments?: RoleAssignments,
   characterStars: Partial<Record<CharacterId, number>> = {},
   characterMovePp: CharacterMovePp = {},
+  characterHp: CharacterHp = {},
 ): FighterDefinition[] {
   const cookBonus = roleAssignments ? getCookMaxHpBonusPercent(roleAssignments) : 0;
   return [
-    ...getPlayerFighters(activePartyIds, cookBonus, characterStars, characterMovePp),
+    ...getPlayerFighters(activePartyIds, cookBonus, characterStars, characterMovePp, characterHp),
     ...encounterEnemies[encounterId],
   ].map((fighter) => ({
     ...fighter,

@@ -1,6 +1,7 @@
 import { createCardPackOpening, getCardPack } from '../cards/packs';
 import { getArtifactDefinition } from '../artifacts/artifacts';
 import { getCrewCharacter, shipRoleOrder } from '../crew/characters';
+import { getRunCharacterHp, healCharacters } from '../crew/health';
 import {
   addPercentageBonus,
   applyShipwrightProtection,
@@ -10,10 +11,10 @@ import {
 import type {
   CharacterId,
   NodeChoice,
+  RoleAdjustedAmount,
   RewardChange,
   RunSnapshot,
   ShipRole,
-  StoryNode,
 } from './types';
 
 export interface StoryChoiceResolution {
@@ -31,8 +32,33 @@ function availableCharacterIds(run: RunSnapshot): CharacterId[] {
 
 function normalizeActiveParty(run: RunSnapshot): CharacterId[] {
   const available = availableCharacterIds(run);
-  const active = run.activePartyIds.filter((id) => available.includes(id)).slice(0, 4);
-  return active.length > 0 ? active : available.slice(0, 1);
+  const living = available.filter((id) => getRunCharacterHp(run, id) > 0);
+  const active = run.activePartyIds.filter((id) => living.includes(id)).slice(0, 4);
+  return active.length > 0 ? active : living.slice(0, 1);
+}
+
+export function getVoyageRoleEffectLevel(
+  run: Pick<RunSnapshot, 'roleAssignments' | 'artifacts'>,
+  role: ShipRole,
+) {
+  const assignedLevel = getRoleEffectLevel(run.roleAssignments, role);
+  if (assignedLevel === 'inactive' || assignedLevel === 'ideal') return assignedLevel;
+  const improved = run.artifacts.some(
+    (artifactId) => getArtifactDefinition(artifactId).improvesRole === role,
+  );
+  return improved ? 'ideal' : 'standard';
+}
+
+export function getRoleAdjustedAmount(
+  run: Pick<RunSnapshot, 'roleAssignments' | 'artifacts'>,
+  amount: number,
+  adjustment?: RoleAdjustedAmount,
+): number {
+  if (!adjustment) return amount;
+  const level = getVoyageRoleEffectLevel(run, adjustment.role);
+  if (level === 'ideal') return adjustment.ideal;
+  if (level === 'standard') return adjustment.standard;
+  return amount;
 }
 
 export function getChoiceBerryCost(choice: NodeChoice): number {
@@ -44,6 +70,14 @@ export function getChoiceRequiredRoles(choice: NodeChoice): ShipRole[] {
     ?.filter((requirement): requirement is Extract<typeof requirement, { type: 'role' }> =>
       requirement.type === 'role')
     .map((requirement) => requirement.role) ?? [];
+}
+
+export function getChoiceAdjustedRoles(choice: NodeChoice): ShipRole[] {
+  return [...new Set(choice.consequences.flatMap((consequence) =>
+    'roleAdjustedAmount' in consequence && consequence.roleAdjustedAmount
+      ? [consequence.roleAdjustedAmount.role]
+      : [],
+  ))];
 }
 
 export function canResolveStoryChoice(run: RunSnapshot, choice: NodeChoice): boolean {
@@ -70,10 +104,15 @@ function getHullDamage(
   run: RunSnapshot,
   consequence: Extract<NodeChoice['consequences'][number], { type: 'hull-damage' }>,
 ): number {
+  const eventAdjustedAmount = getRoleAdjustedAmount(
+    run,
+    consequence.amount,
+    consequence.roleAdjustedAmount,
+  );
   const roleAdjustedAmount = consequence.idealRole &&
     getRoleEffectLevel(run.roleAssignments, consequence.idealRole) === 'ideal'
-    ? consequence.idealRoleAmount ?? consequence.amount
-    : consequence.amount;
+    ? consequence.idealRoleAmount ?? eventAdjustedAmount
+    : eventAdjustedAmount;
   return consequence.protectedByShipwright
     ? applyShipwrightProtection(roleAdjustedAmount, run.roleAssignments)
     : roleAdjustedAmount;
@@ -93,7 +132,7 @@ function assignRecruitToOpenRole(
 
 export function applyStoryConsequences(
   run: RunSnapshot,
-  node: StoryNode,
+  node: { id: string; name: string },
   choice: Pick<NodeChoice, 'consequences'>,
   random: () => number = Math.random,
 ): StoryChoiceResolution {
@@ -105,18 +144,30 @@ export function applyStoryConsequences(
     activePartyIds: [...run.activePartyIds],
     roleAssignments: { ...run.roleAssignments },
     characterMovePp: { ...run.characterMovePp },
+    characterHp: { ...run.characterHp },
   };
   const changes: RewardChange[] = [];
 
   for (const consequence of choice.consequences) {
     if (consequence.type === 'resource') {
       const before = snapshot[consequence.resource];
+      const adjustedAmount = getRoleAdjustedAmount(
+        snapshot,
+        consequence.amount,
+        consequence.roleAdjustedAmount,
+      );
+      const treasureBonus = consequence.resource === 'berries' &&
+        consequence.treasureReward &&
+        adjustedAmount > 0 &&
+        snapshot.artifacts.includes('merchants-ledger')
+        ? 25
+        : 0;
       const authoredAmount = consequence.captainBountyBonus
         ? addPercentageBonus(
-            consequence.amount,
+            adjustedAmount,
             getCaptainBountyBonusPercent(snapshot.roleAssignments),
           )
-        : consequence.amount;
+        : adjustedAmount + treasureBonus;
       const after = Math.max(0, before + authoredAmount);
       const applied = after - before;
       snapshot = { ...snapshot, [consequence.resource]: after };
@@ -149,12 +200,22 @@ export function applyStoryConsequences(
         artifacts: artifactAdded
           ? [...snapshot.artifacts, consequence.artifactId]
           : snapshot.artifacts,
+        berries: artifactAdded
+          ? snapshot.berries
+          : snapshot.berries + artifact.duplicateBerries,
       };
       changes.push({
         label: 'Artifact',
-        value: artifactAdded ? artifact.name : 'Already owned',
+        value: artifactAdded ? artifact.name : `${artifact.name} duplicate`,
         tone: artifactAdded ? 'positive' : 'neutral',
       });
+      if (!artifactAdded) {
+        changes.push({
+          label: 'Berries',
+          value: signed(artifact.duplicateBerries),
+          tone: 'positive',
+        });
+      }
       continue;
     }
 
@@ -182,8 +243,11 @@ export function applyStoryConsequences(
     if (consequence.type === 'guest') {
       const character = getCrewCharacter(consequence.characterId);
       const adding = consequence.action === 'add';
+      const characterHp = { ...snapshot.characterHp };
+      if (!adding) delete characterHp[consequence.characterId];
       snapshot = {
         ...snapshot,
+        characterHp,
         guestIds: adding && !snapshot.rosterIds.includes(consequence.characterId)
           ? [...new Set([...snapshot.guestIds, consequence.characterId])]
           : snapshot.guestIds.filter((id) => id !== consequence.characterId),
@@ -192,6 +256,20 @@ export function applyStoryConsequences(
         label: 'Story guest',
         value: `${adding ? '+' : '−'} ${character.name}`,
         tone: adding ? 'positive' : 'neutral',
+      });
+      continue;
+    }
+
+    if (consequence.type === 'heal') {
+      const targetIds = consequence.target === 'active-party'
+        ? snapshot.activePartyIds
+        : availableCharacterIds(snapshot);
+      const result = healCharacters(snapshot, targetIds, consequence.percent);
+      snapshot = { ...snapshot, characterHp: result.characterHp };
+      changes.push({
+        label: 'Crew HP',
+        value: result.healed > 0 ? signed(result.healed) : 'Already healthy',
+        tone: result.healed > 0 ? 'positive' : 'neutral',
       });
       continue;
     }
@@ -213,7 +291,12 @@ export function applyStoryConsequences(
     }
 
     if (consequence.type === 'hull-repair') {
-      const hull = Math.min(snapshot.maxHull, snapshot.hull + consequence.amount);
+      const repairAmount = getRoleAdjustedAmount(
+        snapshot,
+        consequence.amount,
+        consequence.roleAdjustedAmount,
+      );
+      const hull = Math.min(snapshot.maxHull, snapshot.hull + repairAmount);
       const repaired = hull - snapshot.hull;
       snapshot = { ...snapshot, hull };
       changes.push({

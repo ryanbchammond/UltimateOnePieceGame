@@ -9,12 +9,14 @@ import {
 import {
   getCrewCharacter,
 } from '../crew/characters';
+import { getRunCharacterHp, setCrewHealthPercent } from '../crew/health';
 import { applyShipwrightProtection } from '../crew/roleEffects';
 import {
   activeStoryContent,
   getAvailableNodes,
   getStoryArc,
   getStoryNode,
+  getStoryTravelRule,
   isNodeAvailable,
   nodeOffersService,
   storyNodeChoices,
@@ -23,9 +25,14 @@ import {
   applyStoryConsequences,
   canResolveStoryChoice,
 } from '../run/storyConsequences';
+import {
+  createVoyageLeg,
+  getCurrentVoyageEvent,
+} from '../run/voyageEvents';
 import type {
   CardPackOpening,
   CharacterId,
+  CharacterHp,
   RewardChange,
   RewardReceipt,
   RunSnapshot,
@@ -35,6 +42,9 @@ import type {
 interface RunStoreState extends RunSnapshot {
   startRun: () => void;
   enterNode: (nodeId: string) => boolean;
+  beginVoyage: (destinationNodeId: string, random?: () => number) => boolean;
+  startVoyageBattle: () => boolean;
+  resolveVoyageEvent: (choiceId: string) => boolean;
   resolveNode: (choiceId: string) => boolean;
   resolveBattle: (outcome: 'victory' | 'defeat') => void;
   assignCrewRole: (characterId: CharacterId | null, role: ShipRole) => boolean;
@@ -47,6 +57,7 @@ interface RunStoreState extends RunSnapshot {
   claimPackCard: (cardId: string) => boolean;
   acknowledgeReward: (followDestination?: boolean) => void;
   setCharacterMovePp: (characterId: CharacterId, moveId: string, remainingPp: number) => void;
+  setCharacterHealth: (health: CharacterHp) => void;
   upgradeCharacter: (characterId: CharacterId) => boolean;
   abandonRun: () => void;
 }
@@ -87,12 +98,16 @@ function initialSnapshot(): RunSnapshot {
     characterShards: {},
     characterStars: {},
     characterMovePp: {},
+    characterHp: {},
     packsOpened: 0,
     pendingPack: null,
     crewAssignmentWindow: null,
     latestReward: null,
     rewardPending: false,
     rewardDestinationNodeId: null,
+    rewardOriginNodeId: null,
+    pendingVoyage: null,
+    voyageEventHistory: [],
   };
 }
 
@@ -107,6 +122,8 @@ function newRunSnapshot(): RunSnapshot {
     currentNodeId: arc.start.nodeId,
     chosenBranches: {},
     artifacts: [],
+    pendingVoyage: null,
+    voyageEventHistory: [],
     journal: [arc.start.journalEntry],
   };
 }
@@ -157,6 +174,9 @@ export function migrateRunState(persistedState: unknown, version: number): RunSn
     : persisted;
   return {
     ...snapshot,
+    pendingVoyage: version >= 4 ? snapshot.pendingVoyage ?? null : null,
+    voyageEventHistory: version >= 4 ? snapshot.voyageEventHistory ?? [] : [],
+    characterHp: version >= 5 ? snapshot.characterHp ?? {} : {},
     pendingPack: snapshot.pendingPack
       ? {
           ...snapshot.pendingPack,
@@ -166,6 +186,7 @@ export function migrateRunState(persistedState: unknown, version: number): RunSn
       : null,
     rewardPending: version >= 3 ? snapshot.rewardPending ?? false : false,
     rewardDestinationNodeId: version >= 3 ? snapshot.rewardDestinationNodeId ?? null : null,
+    rewardOriginNodeId: version >= 5 ? snapshot.rewardOriginNodeId ?? null : null,
   };
 }
 
@@ -225,6 +246,119 @@ export const useRunStore = create<RunStoreState>()(
           latestReward: null,
           rewardPending: false,
           rewardDestinationNodeId: null,
+          rewardOriginNodeId: null,
+        });
+        return true;
+      },
+
+      beginVoyage: (destinationNodeId, random = Math.random) => {
+        const state = get();
+        const destination = getStoryNode(destinationNodeId);
+        if (
+          state.phase !== 'map' ||
+          !destination ||
+          destination.arcId !== state.activeArcId ||
+          !isNodeAvailable(state, destination)
+        ) {
+          return false;
+        }
+
+        const completedLeg = state.pendingVoyage;
+        if (
+          completedLeg &&
+          completedLeg.destinationNodeId === destinationNodeId &&
+          completedLeg.currentEventIndex >= completedLeg.eventIds.length
+        ) {
+          set({
+            currentNodeId: destination.id,
+            visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
+            phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
+            pendingVoyage: null,
+            pendingPack: null,
+            crewAssignmentWindow: null,
+            latestReward: null,
+            rewardPending: false,
+            rewardDestinationNodeId: null,
+          });
+          return true;
+        }
+        if (completedLeg) return false;
+
+        const travelRule = getStoryTravelRule(state.currentNodeId, destinationNodeId);
+        const leg = createVoyageLeg(state, destinationNodeId, random, travelRule);
+        if (leg.eventIds.length === 0) {
+          set({
+            currentNodeId: destination.id,
+            visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
+            phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
+            pendingVoyage: null,
+            pendingPack: null,
+            crewAssignmentWindow: null,
+            latestReward: null,
+            rewardPending: false,
+            rewardDestinationNodeId: null,
+          });
+          return true;
+        }
+        set({
+          phase: 'voyage',
+          pendingVoyage: leg,
+          voyageEventHistory: [...(state.voyageEventHistory ?? []), ...leg.eventIds].slice(-24),
+          pendingPack: null,
+          crewAssignmentWindow: null,
+          latestReward: null,
+          rewardPending: false,
+          rewardDestinationNodeId: null,
+          rewardOriginNodeId: null,
+        });
+        return true;
+      },
+
+      startVoyageBattle: () => {
+        const state = get();
+        const event = getCurrentVoyageEvent(state);
+        if (state.phase !== 'voyage' || !event?.encounterId) return false;
+        set({ phase: 'battle' });
+        return true;
+      },
+
+      resolveVoyageEvent: (choiceId) => {
+        const state = get();
+        const event = getCurrentVoyageEvent(state);
+        const choice = event?.choices?.find((candidate) => candidate.id === choiceId);
+        if (
+          state.phase !== 'voyage' ||
+          !state.pendingVoyage ||
+          !event ||
+          event.encounterId ||
+          !choice ||
+          !canResolveStoryChoice(state, choice)
+        ) {
+          return false;
+        }
+
+        const withJournal = {
+          ...state,
+          journal: [...state.journal, choice.outcome.journalEntry].slice(-12),
+        };
+        const resolution = applyStoryConsequences(withJournal, event, choice);
+        const nextIndex = state.pendingVoyage.currentEventIndex + 1;
+        const finished = nextIndex >= state.pendingVoyage.eventIds.length;
+        set({
+          ...resolution.snapshot,
+          phase: finished ? 'map' : 'voyage',
+          pendingVoyage: {
+            ...state.pendingVoyage,
+            currentEventIndex: nextIndex,
+          },
+          latestReward: createRewardReceipt(
+            state,
+            choice.outcome.title,
+            choice.outcome.detail,
+            resolution.changes,
+          ),
+          rewardPending: true,
+          rewardDestinationNodeId: finished ? state.pendingVoyage.destinationNodeId : null,
         });
         return true;
       },
@@ -261,17 +395,83 @@ export const useRunStore = create<RunStoreState>()(
 
       resolveBattle: (outcome) => {
         const state = get();
+        const voyageEvent = getCurrentVoyageEvent(state);
+        if (state.phase === 'battle' && state.pendingVoyage && voyageEvent?.encounterId) {
+          if (outcome === 'defeat') {
+            const hullDamage = applyShipwrightProtection(10, state.roleAssignments);
+            const checkpointIsRest = getStoryNode(state.checkpointNodeId)?.type === 'rest';
+            const crewIds = [...new Set([...state.rosterIds, ...state.guestIds])];
+            set({
+              phase: 'map',
+              currentNodeId: state.checkpointNodeId,
+              hull: Math.max(1, state.hull - hullDamage),
+              characterMovePp: checkpointIsRest ? {} : state.characterMovePp,
+              characterHp: setCrewHealthPercent(state, crewIds, 50),
+              pendingVoyage: null,
+              journal: [
+                ...state.journal,
+                `Defeat during ${voyageEvent.name}. The crew returned to its checkpoint.`,
+              ].slice(-12),
+              latestReward: createRewardReceipt(
+                state,
+                `Defeat during ${voyageEvent.name}`,
+                'The unfinished voyage leg was abandoned and the crew returned to its checkpoint.',
+                [
+                  { label: 'Hull', value: signed(-hullDamage), tone: hullDamage > 0 ? 'negative' : 'neutral' },
+                  { label: 'Checkpoint', value: getStoryNode(state.checkpointNodeId)?.name ?? state.checkpointNodeId, tone: 'neutral' },
+                  ...(checkpointIsRest
+                    ? [{ label: 'Move PP', value: 'Fully restored', tone: 'positive' as const }]
+                    : []),
+                  { label: 'Crew HP', value: 'Revived to 50%', tone: 'positive' },
+                ],
+              ),
+              rewardPending: true,
+              rewardDestinationNodeId: null,
+            });
+            return;
+          }
+
+          const victory = voyageEvent.victory;
+          if (!victory) return;
+          const withJournal = {
+            ...state,
+            journal: [...state.journal, victory.journalEntry].slice(-12),
+          };
+          const resolution = applyStoryConsequences(withJournal, voyageEvent, victory);
+          const nextIndex = state.pendingVoyage.currentEventIndex + 1;
+          const finished = nextIndex >= state.pendingVoyage.eventIds.length;
+          set({
+            ...resolution.snapshot,
+            phase: finished ? 'map' : 'voyage',
+            pendingVoyage: {
+              ...state.pendingVoyage,
+              currentEventIndex: nextIndex,
+            },
+            latestReward: createRewardReceipt(
+              state,
+              victory.title,
+              victory.detail,
+              resolution.changes,
+            ),
+            rewardPending: true,
+            rewardDestinationNodeId: finished ? state.pendingVoyage.destinationNodeId : null,
+          });
+          return;
+        }
+
         const node = getStoryNode(state.currentNodeId);
         if (state.phase !== 'battle' || !node) return;
 
         if (outcome === 'defeat') {
           const hullDamage = applyShipwrightProtection(10, state.roleAssignments);
           const checkpointIsRest = getStoryNode(state.checkpointNodeId)?.type === 'rest';
+          const crewIds = [...new Set([...state.rosterIds, ...state.guestIds])];
           set({
             phase: 'map',
             currentNodeId: state.checkpointNodeId,
             hull: Math.max(1, state.hull - hullDamage),
             characterMovePp: checkpointIsRest ? {} : state.characterMovePp,
+            characterHp: setCrewHealthPercent(state, crewIds, 50),
             journal: [...state.journal, `Defeat at ${node.name}. The crew returned to its checkpoint.`].slice(
               -12,
             ),
@@ -285,6 +485,7 @@ export const useRunStore = create<RunStoreState>()(
                 ...(checkpointIsRest
                   ? [{ label: 'Move PP', value: 'Fully restored', tone: 'positive' as const }]
                   : []),
+                { label: 'Crew HP', value: 'Revived to 50%', tone: 'positive' },
               ],
             ),
             rewardPending: true,
@@ -342,6 +543,7 @@ export const useRunStore = create<RunStoreState>()(
         const availableIds = new Set([...state.rosterIds, ...state.guestIds]);
         if (
           !availableIds.has(characterId) ||
+          getRunCharacterHp(state, characterId) <= 0 ||
           state.activePartyIds.includes(characterId) ||
           state.activePartyIds.length >= 4
         ) {
@@ -366,6 +568,7 @@ export const useRunStore = create<RunStoreState>()(
         const availableIds = new Set([...state.rosterIds, ...state.guestIds]);
         if (
           !availableIds.has(incomingId) ||
+          getRunCharacterHp(state, incomingId) <= 0 ||
           state.activePartyIds.includes(incomingId) ||
           outgoingIndex === -1
         ) {
@@ -482,6 +685,7 @@ export const useRunStore = create<RunStoreState>()(
           rewardPending: true,
           rewardDestinationNodeId:
             resume?.phase === 'map' ? resume.currentNodeId : null,
+          rewardOriginNodeId: resume?.phase === 'map' ? state.currentNodeId : null,
         });
         return true;
       },
@@ -496,16 +700,52 @@ export const useRunStore = create<RunStoreState>()(
           state.phase === 'map' &&
           isNodeAvailable(state, destination)
         ) {
+          const finishedVoyage = state.pendingVoyage &&
+            state.pendingVoyage.destinationNodeId === destination.id &&
+            state.pendingVoyage.currentEventIndex >= state.pendingVoyage.eventIds.length;
+          if (!finishedVoyage) {
+            const voyageOrigin = state.rewardOriginNodeId ?? state.currentNodeId;
+            const travelRule = getStoryTravelRule(voyageOrigin, destination.id);
+            const leg = createVoyageLeg(
+              { ...state, currentNodeId: voyageOrigin },
+              destination.id,
+              Math.random,
+              travelRule,
+            );
+            if (leg.eventIds.length === 0) {
+              set({
+                currentNodeId: destination.id,
+                visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
+                phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
+                pendingVoyage: null,
+                rewardPending: false,
+                rewardDestinationNodeId: null,
+                rewardOriginNodeId: null,
+              });
+              return;
+            }
+            set({
+              phase: 'voyage',
+              pendingVoyage: leg,
+              voyageEventHistory: [...(state.voyageEventHistory ?? []), ...leg.eventIds].slice(-24),
+              rewardPending: false,
+              rewardDestinationNodeId: null,
+              rewardOriginNodeId: null,
+            });
+            return;
+          }
           set({
             currentNodeId: destination.id,
             visitedNodeIds: [...new Set([...state.visitedNodeIds, destination.id])],
             phase: destination.type === 'battle' || destination.type === 'boss' ? 'battle' : 'node',
+            pendingVoyage: null,
             rewardPending: false,
             rewardDestinationNodeId: null,
+            rewardOriginNodeId: null,
           });
           return;
         }
-        set({ rewardPending: false, rewardDestinationNodeId: null });
+        set({ rewardPending: false, rewardDestinationNodeId: null, rewardOriginNodeId: null });
       },
 
       setCharacterMovePp: (characterId, moveId, remainingPp) => {
@@ -520,6 +760,20 @@ export const useRunStore = create<RunStoreState>()(
             },
           },
         });
+      },
+
+      setCharacterHealth: (health) => {
+        const state = get();
+        const availableIds = new Set([...state.rosterIds, ...state.guestIds]);
+        const characterHp = { ...state.characterHp };
+        for (const [characterId, hp] of Object.entries(health) as Array<[CharacterId, number]>) {
+          if (!availableIds.has(characterId) || !Number.isFinite(hp)) continue;
+          characterHp[characterId] = Math.max(
+            0,
+            Math.min(getRunCharacterHp({ ...state, characterHp: {} }, characterId), Math.floor(hp)),
+          );
+        }
+        set({ characterHp });
       },
 
       upgradeCharacter: (characterId) => {
@@ -558,7 +812,7 @@ export const useRunStore = create<RunStoreState>()(
     }),
     {
       name: runStorageKey,
-      version: 3,
+      version: 5,
       storage: runStorage,
       migrate: migrateRunState,
     },

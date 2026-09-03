@@ -201,4 +201,38 @@ describe('battle store', () => {
     const luffy = useBattleStore.getState().battle.fighters.find((fighter) => fighter.id === 'luffy')!;
     expect(luffy.movePp.pistol).toBe(7);
   });
+
+  it('starts from persisted HP and saves damage after enemy actions', () => {
+    useRunStore.getState().startRun();
+    useRunStore.setState({ characterHp: { luffy: 40 } });
+    useBattleStore.getState().startEncounter(
+      'alvida-deck',
+      ['luffy'],
+      useRunStore.getState().roleAssignments,
+      {},
+      {},
+      useRunStore.getState().characterHp,
+    );
+    let battle = useBattleStore.getState().battle;
+    expect(battle.fighters.find((fighter) => fighter.id === 'luffy')?.hp).toBe(40);
+    const enemyId = battle.fighters.find((fighter) => fighter.side === 'enemy')!.id;
+    battle = {
+      ...battle,
+      turnOrder: [enemyId],
+      turnIndex: 0,
+      fighters: battle.fighters.map((fighter) => {
+        if (fighter.id !== enemyId) return fighter;
+        const damageMove = fighter.moves.find((move) =>
+          move.effects.some((effect) => effect.effect === 'damage'))!;
+        return { ...fighter, moves: [damageMove] };
+      }),
+    };
+    useBattleStore.setState({ battle });
+
+    useBattleStore.getState().takeEnemyTurn();
+    battle = useBattleStore.getState().battle;
+    expect(useRunStore.getState().characterHp?.luffy)
+      .toBe(battle.fighters.find((fighter) => fighter.id === 'luffy')?.hp);
+    expect(useRunStore.getState().characterHp?.luffy).toBeLessThan(40);
+  });
 });

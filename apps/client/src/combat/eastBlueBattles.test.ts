@@ -91,6 +91,26 @@ describe('Story encounters', () => {
     expect(enemies.every((fighter) => fighter.moves.length === 4)).toBe(true);
   });
 
+  it.each<EncounterId>([
+    'voyage-alvida-raiders',
+    'voyage-marine-patrol',
+  ])('%s remains a light, valid solo voyage attack', (id) => {
+    const definitions = getEncounterFighters(id, ['luffy']);
+    expect(definitions.filter((fighter) => fighter.side === 'enemy')).toHaveLength(2);
+    expect(() => createBattle(definitions)).not.toThrow();
+    expect(playWithBasicFocusFire(id, ['luffy']).battle.status).toBe('victory');
+  });
+
+  it.each<EncounterId>([
+    'voyage-buggy-scouts',
+    'voyage-marine-pursuit',
+  ])('%s remains a light, valid Orange Town voyage attack', (id) => {
+    const definitions = getEncounterFighters(id, ['luffy', 'zoro']);
+    expect(definitions.filter((fighter) => fighter.side === 'enemy')).toHaveLength(2);
+    expect(() => createBattle(definitions)).not.toThrow();
+    expect(playWithBasicFocusFire(id, ['luffy', 'zoro']).battle.status).toBe('victory');
+  });
+
   it.each<EncounterId>(['alvida-deck', 'alvida-hold'])(
     '%s is valid and winnable with solo Luffy or Luffy and Coby',
     (id) => {
