@@ -350,6 +350,18 @@ describe('Story encounters', () => {
     expect(krieg.battle.status).toBe('victory');
   });
 
+  it('names an enemy combatant separately when the same collectible character is selected', () => {
+    const party: CharacterId[] = ['luffy', 'zoro', 'nami', 'gin'];
+    const definitions = getEncounterFighters('krieg-officers', party);
+    const playerGin = definitions.find((fighter) => fighter.side === 'player' && fighter.name === 'Gin');
+    const enemyGin = definitions.find((fighter) => fighter.side === 'enemy' && fighter.name === 'Gin');
+
+    expect(playerGin?.id).toBe('gin');
+    expect(enemyGin?.id).toBe('enemy-gin');
+    expect(() => createBattle(definitions)).not.toThrow();
+    expect(playWithBasicFocusFire('krieg-officers', party).battle.status).toBe('victory');
+  });
+
   it('applies the Cook max-HP bonus only to the active player party', () => {
     const definitions = getEncounterFighters(
       'shells-town',

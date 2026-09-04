@@ -796,9 +796,22 @@ export function getEncounterFighters(
   characterHp: CharacterHp = {},
 ): FighterDefinition[] {
   const cookBonus = roleAssignments ? getCookMaxHpBonusPercent(roleAssignments) : 0;
+  const players = getPlayerFighters(
+    activePartyIds,
+    cookBonus,
+    characterStars,
+    characterMovePp,
+    characterHp,
+  );
+  const playerIds = new Set(players.map((fighter) => fighter.id));
+  const enemies = encounterEnemies[encounterId].map((fighter) =>
+    playerIds.has(fighter.id)
+      ? { ...fighter, id: `enemy-${fighter.id}` }
+      : fighter,
+  );
   return [
-    ...getPlayerFighters(activePartyIds, cookBonus, characterStars, characterMovePp, characterHp),
-    ...encounterEnemies[encounterId],
+    ...players,
+    ...enemies,
   ].map((fighter) => ({
     ...fighter,
     moves: fighter.moves.map((move) => ({ ...move })),
